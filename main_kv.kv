@@ -1,0 +1,292 @@
+#: import sys.exit sys
+
+<Main>:
+    youtube_title: youtube_title
+    input_ref: input_ref
+    mp3: mp3
+    wav: wav
+    aac: aac
+    alac: alac
+    m4a:m4a
+    avi:avi
+    mpeg:mpeg
+    mp4:mp4
+    carusel: carusel
+    padding:dp(10)
+    orientation: "vertical"
+    BoxLayout:
+        # ROOT
+        size_hint_y: .25
+        BoxLayout:
+            orientation:"vertical"
+            size_hint_x: .3
+            BoxLayout:
+                size_hint_y: .2
+                Label:
+                    id: youtube_title
+                    text: "title"
+                    font_size: sp(10)
+                    text_size: self.size
+                    halign: "left"
+                    valign: "center"
+            BoxLayout:
+                size_hint_y: .5
+                MyCarousel:
+                    id: carusel
+                    duration: "left"
+                    loop:True
+#                    Image:
+#                        source: r".\\Capture\\1111.jpg"
+#                    Image:
+#                        source: r".\\Capture\\2222.jpg"
+#                    Image:
+#                        source: r".\\Capture\\10001.jpg"
+#                    Image:
+#                        source: r".\\Capture\\kivy.jpg"
+            BoxLayout:
+                size_hint_y: .3
+                orientation:"vertical"
+                BoxLayout:
+                    size_hint_y: .6
+                    BoxLayout:
+                        Button:
+                            on_press: root.carusel.load_previous()
+                            canvas:
+                                Rectangle:
+                                    size: self.size
+                                    pos: self.pos
+                                    source: r".\\Capture\\prev.png"
+                    BoxLayout:
+                        Button:
+                            canvas:
+                                Rectangle:
+                                    size: self.size
+                                    pos: self.pos
+                                    source: r".\\Capture\\play.png"
+                    BoxLayout:
+                        Button:
+                            canvas:
+                                Rectangle:
+                                    size: self.size
+                                    pos: self.pos
+                                    source: r".\\Capture\\stop.png"
+                    BoxLayout:
+                        Button:
+                            on_press: root.carusel.load_next()
+                            canvas:
+                                Rectangle:
+                                    size: self.size
+                                    pos: self.pos
+                                    source: r".\\Capture\\next.png"
+                BoxLayout:
+                    size_hint_y: .4
+                    Button:
+                        text: "Сохранить ролик"
+                        on_release: root.save_one_sound_button()
+
+        BoxLayout:
+            # TWO
+            orientation:"vertical"
+            size_hint_x: .05
+            Slider:
+                orientation: "vertical"
+                min: 0
+                max: 100
+                value: 50
+                value_track: True
+                value_track_color: 0,1,0
+                background_width: sp(15)
+                cursor_size: sp(1),sp(1)
+
+
+
+        BoxLayout:
+            # THREE
+            size_hint_x: .5
+
+            BoxLayout:
+                size_hint_x: .8
+                orientation:"vertical"
+                BoxLayout:
+                    size_hint_y: .1
+                    Label:
+                        text: "Сохранить в формате:"
+
+
+                BoxLayout:
+                    BoxLayout:
+                        orientation: "vertical"
+                        BoxLayout:
+                            size_hint_y: .2
+                            BoxLayout:
+                                size_hint_x: .1
+                                CheckBox:
+                                    id: mp3
+                                    group: "checkbutt"
+                                    active: True
+                            BoxLayout:
+                                size_hint_x: .9
+                                Label:
+                                    markup: True
+                                    text: "MP3 [size=10]128kbps 44kHz[/size]"
+                                    color: "yellow" if root.mp3.state == "down" else "white"
+
+                        BoxLayout:
+                            size_hint_y: .2
+                            BoxLayout:
+                                size_hint_x: .1
+                                CheckBox:
+                                    id: wav
+                                    group: "checkbutt"
+                            BoxLayout:
+                                size_hint_x: .9
+                                Label:
+                                    markup:True
+                                    text: "WAV [size=10]128kbps 44kHz[/size]"
+                                    color: "yellow" if root.wav.state == "down" else "white"
+                        BoxLayout:
+                            size_hint_y: .2
+                            BoxLayout:
+                                size_hint_x: .1
+                                CheckBox:
+                                    id: aac
+                                    group: "checkbutt"
+                            BoxLayout:
+                                size_hint_x: .9
+                                Label:
+                                    markup:True
+                                    text: "AAC [size=10]112kbps 44kHz[/size]"
+                                    color: "yellow" if root.aac.state == "down" else "white"
+                        BoxLayout:
+                            size_hint_y: .2
+                            BoxLayout:
+                                size_hint_x: .1
+                                CheckBox:
+                                    id: alac
+                                    group: "checkbutt"
+                            BoxLayout:
+                                size_hint_x: .9
+                                Label:
+                                    markup:True
+                                    text: "ALAC [size=10]112kbps 44kHz[/size]"
+                                    color: "yellow" if root.alac.state == "down" else "white"
+                        BoxLayout:
+                            size_hint_y: .2
+                            BoxLayout:
+                                size_hint_x: .1
+                                CheckBox:
+                                    id: m4a
+                                    group: "checkbutt"
+                            BoxLayout:
+                                size_hint_x: .9
+                                Label:
+                                    markup:True
+                                    text: "M4A [size=10]112kbps 44kHz[/size]"
+                                    color: "yellow" if root.m4a.state == "down" else "white"
+                        BoxLayout:
+                            size_hint_y: .2
+                            BoxLayout:
+                                size_hint_x: .1
+                                CheckBox:
+                                    id: avi
+                                    group: "video"
+                                    disabled: True
+                            BoxLayout:
+                                size_hint_x: .9
+                                Label:
+                                    markup:True
+                                    text: "AVI"
+                                    color: "yellow" if root.avi.state == "down" else "white"
+                        BoxLayout:
+                            size_hint_y: .2
+                            BoxLayout:
+                                size_hint_x: .1
+                                CheckBox:
+                                    id: mpeg
+                                    group: "video"
+                                    disabled: True
+                            BoxLayout:
+                                size_hint_x: .9
+                                Label:
+                                    markup:True
+                                    text: " MPEG"
+                                    color: "yellow" if root.mpeg.state == "down" else "white"
+                        BoxLayout:
+                            size_hint_y: .2
+                            BoxLayout:
+                                size_hint_x: .1
+                                CheckBox:
+                                    id: mp4
+                                    group: "video"
+                                    disabled: True
+                            BoxLayout:
+                                size_hint_x: .9
+                                Label:
+                                    markup:True
+                                    text: " MP4"
+                                    color: "yellow" if root.mp4.state == "down" else "white"
+
+            BoxLayout:
+                orientation: "vertical"
+
+
+                BoxLayout:
+                    size_hint_y: .1
+                    Label:
+                        text: "Программы:"
+                BoxLayout:
+                    orientation: "vertical"
+                    Label:
+                        canvas:
+                            Rectangle:
+                                size: self.size
+                                pos: self.pos
+                                source: r".\\Capture\\Python.png"
+                    Label:
+                        canvas:
+                            Rectangle:
+                                size: self.size
+                                pos: self.pos
+                                source: r".\\Capture\\ffmpegPython.jpg"
+                    Label:
+                        canvas:
+                            Rectangle:
+                                size: self.size
+                                pos: self.pos
+                                source: r".\\Capture\\PyTubeFix.jpg"
+                    Label:
+                        canvas:
+                            Rectangle:
+                                size: self.size
+                                pos: self.pos
+                                source: r".\\Capture\\Pycharm.jpg"
+    BoxLayout:
+        size_hint_y: .04
+        TextInput:
+            id: input_ref
+            multiline: False
+            on_focus: if self.text == "Вставте ссылку.": self.text = ""
+            on_text: root.get_object_youtube()
+            font_size: sp(17)
+            text: "Вставте ссылку."
+
+    BoxLayout:
+        size_hint_y: .1
+        Button:
+            text: "Загрузить плейлист"
+        Label:
+            text: "ОШИБКИ"
+#        Button:
+#            text: "Выход"
+#            on_press: exit()
+    BoxLayout:
+        size_hint_y: .02
+        Label:
+            markup: True
+            text: "автор: Погодаев Илья Сергеевич [color=#0B0080][b]ilya1880@mail.ru[/b][/color]"
+
+
+
+
+
+
