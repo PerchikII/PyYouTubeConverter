@@ -1,12 +1,16 @@
 import ffmpeg
 import os,sys
-
+from datetime import datetime
 
 ###############    Exceptions   #################
 from pytubefix.exceptions import VideoUnavailable
 from pytubefix.exceptions import RegexMatchError
-# pytubefix.exceptions.AgeRestrictedError
+from pytubefix.exceptions import AgeRestrictedError
+"""urllib.error.URLError: <urlopen error [WinError 10060] Попытка установить соединение была безуспешной, 
+т.к. от другого компьютера за требуемое время не получен нужный отклик, или было разорвано уже установленное
+ соединение из-за неверного отклика уже подключенного компьютера>"""
 from pytubefix import YouTube,Playlist
+
 
 
 import kivy
@@ -30,15 +34,31 @@ DIR_MUSIC = os.path.join(current_dir,"Music")
 # print(DIR_MUSIC)
 
 
+Builder.load_file("main_kv.kv")
 
 
-Builder.load_file("00_ParsingYouTube.kv")
+class LabelMessage(Label):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.max_lines = 5
+        self.lines = []
+
+    def add_line(self, new_line):
+        now = datetime.now()
+        time_str = now.strftime("%H:%M:%S")
+        self.lines.append(time_str +" "+ new_line)
+        if len(self.lines) > self.max_lines:
+            self.lines.pop(0)
+        self.update_text()
+
+    def update_text(self):
+        """Обновляет текст Label."""
+        self.text = '\n'.join(self.lines)
+
 
 
 class MyCarousel(Carousel):
     pass
-
-
 
 class Main(BoxLayout):
     mp3 = ObjectProperty()
@@ -53,37 +73,56 @@ class Main(BoxLayout):
     carusel = ObjectProperty()
     input_ref = ObjectProperty()
     youtube_title = ObjectProperty()
+    lab_message = ObjectProperty()
     OBJ_YouTube = None
     OBJ_img_thumb = None
     tuple_checkbox_button = None
-
+    lst_message = []
+    # lab_message.text = f"[color=#32CD32]Запуск программы.[/color]"
 
     def save_one_sound_button(self):
-        print("UID: ",self.is_convert())
-
+        self.lab_message.add_line(f"UID:{str(self.is_convert())}")
+        self.lab_message.add_line(f"[color=#32CD32]Соединение....[/color]")#32CD32
+        self.lab_message.add_line(f"[color=#32CD32]Создание объекта YouTube[/color]")
         try:
             path_load_file = self.OBJ_YouTube.streams.get_audio_only().download(DIR_MUSIC, )
-            print(path_load_file)
+            directory = os.path.split(path_load_file)[0]
+            self.lab_message.add_line(f"[color=#32CD32]Объект YouTube создан.[/color]")
+            self.lab_message.add_line(f"[color=#32CD32]Качаю.[/color]")
+            self.lab_message.add_line(f"[color=#32CD32]Сохраняю в:[/color] {directory}")
         except AttributeError:
             url_video = self.input_ref.text
-            print(f'"{url_video}" Не является ссылкой на YouTube.')
+            self.lab_message.add_line(f'"{url_video}"- [color=#FF0000]не является ссылкой YouTube.[/color]')
+        except AgeRestrictedError:
+            self.lab_message.add_line("Ютубчег выставил этому видео ограничение 18+\n[color=#FF0000]Скачать невозможно.[/color] ")
+        except VideoUnavailable:
+            self.lab_message.add_line("[color=#FF0000]Видео не доступно для скачивания[/color]")
         else:
+            self.lab_message.add_line(f"[color=#32CD32]Файл успешно скачан.[/color]")
+            self.lab_message.add_line(f"[color=#32CD32]Узнаю надо ли конвертировать[/color]")
             check_button = self.is_convert()
+            print("check_button",check_button)
             self.choice_convert_for_audio(check_button,path_load_file)
 
 
 
     def choice_convert_for_audio(self, uid_check_button,path_file):
         match uid_check_button:
-            case 154:
+            case 158:
+                self.lab_message.add_line(f"[color=#32CD32]Конвертирую в MP3[/color]")
                 self.start_convert(path_file,".mp3")
-            case 170:
+            case 174:
+                self.lab_message.add_line(f"[color=#32CD32]Конвертирую в WAV[/color]")
                 self.start_convert(path_file,".wav")
-            case 186:
+            case 190:
+                self.lab_message.add_line(f"[color=#32CD32]Конвертирую в AAC[/color]")
                 self.start_convert(path_file,".aac")
-            case 202:
+            case 206:
+                self.lab_message.add_line(f"[color=#32CD32]Конвертирую M4A кодеком ALAC[/color]")
                 self.start_convert_alac(path_file)
-            case 218:
+            case 222:
+                file = os.path.split(path_file)[-1]
+                self.lab_message.add_line(f"[color=#32CD32]Файл[/color] {file} [color=#32CD32]конвертации не нуждается[/color]")
                 self.start_convert(path_file,None) # ".m4a"
             # case 214:
             #     self.start_convert(path_file,".avi")
@@ -98,7 +137,8 @@ class Main(BoxLayout):
 
     def start_convert_alac(self,path_file):
         ffmpeg.input(path_file).output(path_file+"_alac_", codec="alac").run()
-        print("Conversion completed")
+        self.lab_message.add_line("Конвертация завершена")
+
 
 
     def start_convert(self,path_file,format):
@@ -106,8 +146,9 @@ class Main(BoxLayout):
             new_file = os.path.splitext(path_file)[0] + format
             ffmpeg.input(path_file).output(new_file).run()
         else:
-            print("В конвертации не нуждается")
-        print("Conversion completed")
+            self.lab_message.add_line("В конвертации не нуждается")
+        self.lab_message.add_line("Конвертация завершена")
+
 
 
     def is_convert(self):
@@ -134,8 +175,9 @@ class Main(BoxLayout):
         #     self.install_data_playlist_video()
 
     def install_data_one_video(self):
+        self.lab_message.add_line(f"[color=#32CD32]Получаю название.[/color]")
         self.youtube_title.text = self.OBJ_YouTube.title
-        print(self.OBJ_YouTube.title)
+        self.lab_message.add_line(f"[color=#32CD32]Получение картинки.[/color]")
         self.OBJ_img_thumb = self.OBJ_YouTube.thumbnail_url
         img = AsyncImage(source=self.OBJ_img_thumb, fit_mode="contain")
         self.carusel.clear_widgets()
@@ -162,10 +204,12 @@ class Main(BoxLayout):
 
     def get_one_video(self,url_video):
         try:
+            self.lab_message.add_line(f"[color=#32CD32]Создаю объект YouTube.[/color]")
             self.OBJ_YouTube = YouTube(url_video, )
+            self.lab_message.add_line(f"[color=#32CD32]Объект YouTube создан.[/color]")
             return True
         except RegexMatchError:
-            print(f'"{url_video}" Не является ссылкой на YouTube.')
+            self.lab_message.add_line(f'"{url_video}" Не является ссылкой на YouTube.')
             return False
         except VideoUnavailable:
             print(f'Video {url_video} is unavaialable, skipping.')

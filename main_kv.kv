@@ -12,6 +12,7 @@
     mpeg:mpeg
     mp4:mp4
     carusel: carusel
+    lab_message:lab_message
     padding:dp(10)
     orientation: "vertical"
     BoxLayout:
@@ -24,7 +25,7 @@
                 size_hint_y: .2
                 Label:
                     id: youtube_title
-                    text: "title"
+                    text: ""
                     font_size: sp(10)
                     text_size: self.size
                     halign: "left"
@@ -35,54 +36,43 @@
                     id: carusel
                     duration: "left"
                     loop:True
-#                    Image:
-#                        source: r".\\Capture\\1111.jpg"
-#                    Image:
-#                        source: r".\\Capture\\2222.jpg"
-#                    Image:
-#                        source: r".\\Capture\\10001.jpg"
-#                    Image:
-#                        source: r".\\Capture\\kivy.jpg"
+                    Image:
+                        source: r".\\IMG\\no_image.jpg"
+                        fit_mode: "fill"# "contain"
+
             BoxLayout:
                 size_hint_y: .3
                 orientation:"vertical"
                 BoxLayout:
-                    size_hint_y: .6
+                    size_hint_y: .5
                     BoxLayout:
+                        size_hint_x: .2
                         Button:
                             on_press: root.carusel.load_previous()
                             canvas:
                                 Rectangle:
                                     size: self.size
                                     pos: self.pos
-                                    source: r".\\Capture\\prev.png"
+                                    source: r".\\IMG\\prev.png"
                     BoxLayout:
                         Button:
-                            canvas:
-                                Rectangle:
-                                    size: self.size
-                                    pos: self.pos
-                                    source: r".\\Capture\\play.png"
+                            text: "Сохранить ролик"
+                            on_release: root.save_one_sound_button()
+
                     BoxLayout:
-                        Button:
-                            canvas:
-                                Rectangle:
-                                    size: self.size
-                                    pos: self.pos
-                                    source: r".\\Capture\\stop.png"
-                    BoxLayout:
+                        size_hint_x: .2
                         Button:
                             on_press: root.carusel.load_next()
                             canvas:
                                 Rectangle:
                                     size: self.size
                                     pos: self.pos
-                                    source: r".\\Capture\\next.png"
+                                    source: r".\\IMG\\next.png"
                 BoxLayout:
-                    size_hint_y: .4
+                    size_hint_y: .5
                     Button:
-                        text: "Сохранить ролик"
-                        on_release: root.save_one_sound_button()
+                        text: "Сохранить плейлист"
+                        # on_release: root.save_one_sound_button()
 
         BoxLayout:
             # TWO
@@ -191,12 +181,14 @@
                                     id: avi
                                     group: "video"
                                     disabled: True
+                                    color: "grey"
                             BoxLayout:
                                 size_hint_x: .9
                                 Label:
                                     markup:True
                                     text: "AVI"
                                     color: "yellow" if root.avi.state == "down" else "white"
+                                    color: "grey"
                         BoxLayout:
                             size_hint_y: .2
                             BoxLayout:
@@ -205,12 +197,14 @@
                                     id: mpeg
                                     group: "video"
                                     disabled: True
+                                    color: "grey"
                             BoxLayout:
                                 size_hint_x: .9
                                 Label:
                                     markup:True
                                     text: " MPEG"
                                     color: "yellow" if root.mpeg.state == "down" else "white"
+                                    color: "grey"
                         BoxLayout:
                             size_hint_y: .2
                             BoxLayout:
@@ -219,12 +213,14 @@
                                     id: mp4
                                     group: "video"
                                     disabled: True
+                                    color: "grey"
                             BoxLayout:
                                 size_hint_x: .9
                                 Label:
                                     markup:True
                                     text: " MP4"
                                     color: "yellow" if root.mp4.state == "down" else "white"
+                                    color: "grey"
 
             BoxLayout:
                 orientation: "vertical"
@@ -241,44 +237,45 @@
                             Rectangle:
                                 size: self.size
                                 pos: self.pos
-                                source: r".\\Capture\\Python.png"
+                                source: r".\\IMG\\Python.png"
                     Label:
                         canvas:
                             Rectangle:
                                 size: self.size
                                 pos: self.pos
-                                source: r".\\Capture\\ffmpegPython.jpg"
+                                source: r".\\IMG\\ffmpegPython.jpg"
                     Label:
                         canvas:
                             Rectangle:
                                 size: self.size
                                 pos: self.pos
-                                source: r".\\Capture\\PyTubeFix.jpg"
+                                source: r".\\IMG\\PyTubeFix.jpg"
                     Label:
                         canvas:
                             Rectangle:
                                 size: self.size
                                 pos: self.pos
-                                source: r".\\Capture\\Pycharm.jpg"
+                                source: r".\\IMG\\Pycharm.jpg"
     BoxLayout:
         size_hint_y: .04
         TextInput:
             id: input_ref
             multiline: False
-            on_focus: if self.text == "Вставте ссылку.": self.text = ""
+            on_focus: if self.text == "Вставте URL (ссылку) YouTube.": self.text = ""
             on_text: root.get_object_youtube()
             font_size: sp(17)
-            text: "Вставте ссылку."
+            text: "Вставте URL (ссылку) YouTube."
 
     BoxLayout:
         size_hint_y: .1
-        Button:
-            text: "Загрузить плейлист"
-        Label:
+        LabelMessage:
+            id: lab_message
+            markup:True
             text: "ОШИБКИ"
-#        Button:
-#            text: "Выход"
-#            on_press: exit()
+            text_size: self.size
+            halign: "left"
+            valign: "top"
+
     BoxLayout:
         size_hint_y: .02
         Label:
