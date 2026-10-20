@@ -1,6 +1,7 @@
 #: import sys.exit sys
 
 <Main>:
+    butt_save_one: butt_save_one
     save_playlist_button: save_playlist_button
     prev_button: prev_button
     next_button: next_button
@@ -86,7 +87,7 @@
                     Button:
                         id: save_playlist_button
                         text: "Сохранить плейлист"
-                        # on_release: root.save_playlist_button()
+                        on_release: root.save_all_playlist()
 
         BoxLayout:
             # TWO
@@ -185,7 +186,7 @@
                                 size_hint_x: .9
                                 Label:
                                     markup:True
-                                    text: "M4A [size=10]112kbps 44kHz[/size]"
+                                    text: "M4A YTube формат"
                                     color: "yellow" if root.m4a.state == "down" else "white"
                         BoxLayout:
                             size_hint_y: .2

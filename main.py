@@ -99,6 +99,7 @@ class Main(BoxLayout):
     mpeg = ObjectProperty()
     mp4 = ObjectProperty()
 
+    butt_save_one = ObjectProperty()
     save_playlist_button = ObjectProperty()
     next_button = ObjectProperty()
     prev_button = ObjectProperty()
@@ -128,7 +129,7 @@ class Main(BoxLayout):
             if self.get_one_video(url_video):
                 pass
             elif self.get_playlist_video(url_video):
-                first_video = self.list_all_urls_videos[-1]
+                first_video = self.list_all_urls_videos[-1] #[0]
                 self.get_one_video(first_video)
             else:
                 self.lab_message.add_line(f'    "{url_video}" Не является ссылкой на YouTube.')
@@ -140,11 +141,15 @@ class Main(BoxLayout):
 
     def get_playlist_video(self,url_video):
         try:
+            self.lab_message.add_line(f"[color=#32CD32] Создаю объект Playlist YouTube.[/color]")
+            self.lab_message.add_line(f"[color=#32CD32] Создание плейлиста требует времени.[/color]")
+            self.lab_message.add_line(f"[color=#32CD32] {30*' '}Ожидайте[/color]")
             OBJ_YouTube_Playlist = Playlist(url_video, )
             self.list_all_urls_videos = list(OBJ_YouTube_Playlist.video_urls) # список URL
-            self.lab_message.add_line(f"[color=#32CD32] Создаю объект Playlist YouTube.[/color]")
+            count_videos_url = len(self.list_all_urls_videos)
             self.lab_message.add_line(f"[color=#32CD32] Объект Playlist YouTube создан.[/color]")
-            self.lab_message.add_line(f"[color=#32CD32] Список адресов получен.[/color]")
+            self.lab_message.add_line(f"[color=#32CD32] Список адресов получен.[/size][/color]")
+            self.lab_message.add_line(f"[color=#32CD32] Количество видео в плейлисте: [color=#DCDCDC][size=20]{count_videos_url}[/size][/color]")
             return True
         except KeyError:
             self.lab_message.add_line(f'"{url_video}" Не является ссылкой на Playlist YouTube.')
@@ -193,49 +198,68 @@ class Main(BoxLayout):
     def save_one_sound_button(self):
         t_one = thr.Thread(target=self.start_save_one_track,daemon=True)
         t_one.start()
+    def save_all_playlist(self):
+        t_two = thr.Thread(target=self.start_save_playlist, daemon=True)
+        t_two.start()
 
-    # def thread_two(self):
-    #     t2 = thr.Thread(target=self.wait_for_connection)
-    #
-    # def wait_for_connection(self):
-    #     Clock.schedule_interval()
+
+    def start_save_playlist(self):
+        if self.input_ref.text:
+            self.block_button()
+            self.lab_message.add_line(f"[color=#DCDCDC]Чем больше количество видео, тем длительнее работа.[/color]")
+            self.lab_message.add_line(f"[color=#32CD32]{30*' '}Ожидайте.[/color]")
+            for url_video in self.list_all_urls_videos:
+                self.OBJ_YouTube = YouTube(url_video,)
+                self.start_save_one_track()
+            else:
+                self.block_button(block=False)
+                self.lab_message.add_line(f"[color=#32CD32]{30 * ' '}Работа завершена.[/color]")
+
+        else:
+            self.lab_message.add_line(f"[color=#FF0000]{30 * ' '}Вставте ссылку.[/color]")
+
+
+
+
+
 
     def start_save_one_track(self):
         if self.input_ref.text:
+            self.block_button()
             self.lab_message.add_line(f"[color=#32CD32] Соединение....Создание объекта YouTube[/color]")
             try:
-                path_load_file = self.OBJ_YouTube.streams.get_audio_only().download(DIR_DOWNLOAD, )
+                # path_load_file = self.OBJ_YouTube.streams.get_audio_only().download(DIR_DOWNLOAD, )
+                path_load_file = self.OBJ_YouTube.streams.get_default_audio_track().first().download(DIR_DOWNLOAD, )
                 directory = os.path.split(path_load_file)[0]
                 self.lab_message.add_line(f"[color=#32CD32] Объект YouTube создан.[/color]")
                 self.lab_message.add_line(f"[color=#32CD32] Качаю.[/color]")
                 self.lab_message.add_line(f"[color=#32CD32] {30 * ' '}Ждём![/color]")
                 self.lab_message.add_line(f"[color=#32CD32] Сохраняю в:[/color] {directory}")
-                self.ids.butt_save_one.disabled = True
+
             except AttributeError:
                 video_url = self.input_ref.text
-                self.lab_message.add_line(f"[color=#32CD32] Объект не создан.[/color]")
+                self.lab_message.add_line(f"    [color=#32CD32] Объект не создан.[/color]")
                 self.lab_message.add_line(f'    "{video_url}"- [color=#FF0000]не является ссылкой YouTube.[/color]')
-                self.lab_message.add_line(f'    [color=#FF0000]Есть вероятность, что отсутствует аудио поток[/color]')
+                self.lab_message.add_line(f'    [color=#FF0000]Сорвалась ссылка[/color]')
                 self.lab_message.add_line(f'    [color=#FF0000]Перезапустите программу[/color]')
-                self.ids.butt_save_one.disabled = False
+                self.block_button(block=False)
                 self.install_image_carousel_by_default()
             except AgeRestrictedError:
                 self.lab_message.add_line(f"    Ютубчег выставил этому видео ограничение 18+ [color=#FF0000]Скачать невозможно.[/color] ")
-                self.ids.butt_save_one.disabled = False
+                self.block_button(block=False)
             except MaxRetriesExceeded:
                 self.lab_message.add_line(f"[color=#FF0000] Превышено максимальное количество повторных попыток соединения[/color]")
                 self.lab_message.add_line(f"[color=#FF0000] Плохое интернет соединение.[/color]")
                 self.lab_message.add_line(f"[color=#FF0000] Ютубчег просто так не отдаст контент на халяву.[/color]")
                 self.lab_message.add_line(f"[color=#FF0000] Попробуйте позже.[/color]")
-                self.ids.butt_save_one.disabled = False
+                self.block_button(block=False)
             except VideoUnavailable:
                 self.lab_message.add_line(f"[color=#FF0000] Видео не доступно для скачивания[/color]")
-                self.ids.butt_save_one.disabled = False
+                self.block_button(block=False)
             except Exception as err:
                 self.lab_message.add_line(f"[color=#FF0000] {err}[/color]")
-                self.lab_message.add_line(f"[color=#FF0000] Exception: Ютубчег просто так не отдаст контент на халяву.[/color]")
                 self.lab_message.add_line(f"[color=#FF0000] Попробуйте позже.[/color]")
-                self.ids.butt_save_one.disabled = False
+                self.block_button(block=False)
             else:
                 self.lab_message.add_line(f"[color=#32CD32] Файл успешно скачан.[/color]")
                 check_button = self.is_convert()
@@ -284,48 +308,44 @@ class Main(BoxLayout):
                 self.lab_message.add_line(f"[color=#32CD32] Узнаю надо ли конвертировать в MP3[/color]")
                 if self.is_a_file(path_file,".mp3"):
                     self.lab_message.add_line(f"[color=#32CD32] Файл уже существует.[/color]")
-                    self.lab_message.add_line(f"[color=#32CD32]     В конвертации не нуждается [/color]")
-                    self.ids.butt_save_one.disabled = False
+                    self.lab_message.add_line(f"[color=#F8F8FF]     В конвертации не нуждается [/color]")
                 else:
                     self.lab_message.add_line(f"[color=#32CD32] Конвертирую в MP3[/color]")
                     self.start_convert(path_file,".mp3")
-
+                self.block_button(block=False)
             case self.wav.uid:
                 self.lab_message.add_line(f"[color=#32CD32] Узнаю надо ли конвертировать в WAV[/color]")
                 if self.is_a_file(path_file,".wav"):
                     self.lab_message.add_line(f"[color=#32CD32] Файл уже существует.[/color]")
                     self.lab_message.add_line(f"[color=#32CD32]     В конвертации не нуждается [/color]")
-                    self.ids.butt_save_one.disabled = False
                 else:
                     self.lab_message.add_line(f"[color=#32CD32] Конвертирую в WAV[/color]")
                     self.start_convert(path_file,".wav")
-
+                self.block_button(block=False)
             case self.aac.uid:
                 self.lab_message.add_line(f"[color=#32CD32] Узнаю надо ли конвертировать в AAC[/color]")
                 if self.is_a_file(path_file,".aac"):
                     self.lab_message.add_line(f"[color=#32CD32] Файл уже существует.[/color]")
                     self.lab_message.add_line(f"[color=#32CD32]     В конвертации не нуждается [/color]")
-                    self.ids.butt_save_one.disabled = False
                 else:
                     self.lab_message.add_line(f"[color=#32CD32] Конвертирую в AAC[/color]")
                     self.start_convert(path_file,".aac")
-
+                self.block_button(block=False)
             case self.alac.uid:
                 self.lab_message.add_line(f"[color=#32CD32] Узнаю надо ли конвертировать кодеком ALAC[/color]")
                 if self.is_alac_file(path_file):
                     self.lab_message.add_line(f"[color=#32CD32] Файл уже существует.[/color]")
                     self.lab_message.add_line(f"[color=#32CD32]     В конвертации не нуждается [/color]")
-                    self.ids.butt_save_one.disabled = False
                 else:
                     self.lab_message.add_line(f"[color=#32CD32] Конвертирую M4A кодеком ALAC[/color]")
                     self.start_convert_alac(path_file)
-
+                self.block_button(block=False)
             case self.m4a.uid:
                 self.lab_message.add_line(f"[color=#32CD32] Узнаю надо ли конвертировать[/color]")
                 if self.is_a_file(path_file,".m4a"):
                     self.lab_message.add_line(f"[color=#32CD32] Файл уже существует.[/color]")
                     self.lab_message.add_line(f"[color=#32CD32]     В конвертации не нуждается [/color]")
-                self.ids.butt_save_one.disabled = False
+                self.block_button(block=False)
 
 
             # case self.avi.uid:
@@ -346,10 +366,19 @@ class Main(BoxLayout):
         if format:
             new_file = os.path.splitext(path_file)[0] + format
             ffmpeg.input(path_file).output(new_file).run()
+            # self.delete_original_file(path_file)
         else:
             self.lab_message.add_line(" В конвертации не нуждается")
         self.lab_message.add_line("         Конвертация завершена")
         self.ids.butt_save_one.disabled = False
+
+    # def delete_original_file(self,path_orig_ma4_file):
+    #     if os.path.exists(path_orig_ma4_file):
+    #         os.remove(path_orig_ma4_file)
+    #         print("Файл удалён")
+    #     else:
+    #         print("Файл не найден")
+
 
     def is_convert(self):
         self.tuple_checkbox_button = (self.mp3,self.wav,self.aac,
@@ -358,6 +387,13 @@ class Main(BoxLayout):
         for butt in self.tuple_checkbox_button:
             if butt.state == "down":
                  return butt.uid
+
+    def block_button(self,block=True):
+        self.save_playlist_button.disabled = block
+        self.next_button.disabled = block
+        self.prev_button.disabled = block
+        self.butt_save_one.disabled = block
+
     @mainthread
     def install_image_carousel_by_default(self):
         self.youtube_title.text = ""
