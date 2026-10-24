@@ -25,8 +25,6 @@ from kivy.uix.image import AsyncImage
 from kivy.properties import ObjectProperty
 from kivy.uix.image import Image
 from kivy.clock import mainthread
-from kivy.core.audio import SoundLoader
-from kivy.uix.screenmanager import Screen
 from kivy.uix.textinput import TextInput
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
@@ -40,10 +38,13 @@ if not os.path.exists(os.path.join(current_dir, "Download")):
 DIR_DOWNLOAD = os.path.join(current_dir, "Download")
 
 def is_ffmpeg():
-    result = subprocess.run(["ffmpeg", "-version"], capture_output=True, text=True)
-    return result.stdout[:31]  # version ffmpeg
+    try:
+        result = subprocess.run(["ffmpeg", "-version"], capture_output=True, text=True)
+        return result.stdout[:31]  # version ffmpeg
+    except FileNotFoundError:
+        return False
 
-FFMPEG_LIB = False #is_ffmpeg()
+FFMPEG_LIB = is_ffmpeg()
 
 
 Builder.load_file("main_kv.kv")
@@ -70,7 +71,7 @@ class LabelMessage(Label):
 # https://www.youtube.com/watch?v=fiBLgEx6svA&list=RDfiBLgEx6svA&start_radio=1&pp=oAcB
 # Playlist
 # https://www.youtube.com/playlist?list=PLF2wVlabSmeE
-
+# https://youtube.com/playlist?list=PLD6SPjEPomathzOFzCSvvMAlthuqRnSa9&si=KY77eGjr3fWRXrZH
 class MyCarousel(Carousel):
     pass
 
@@ -110,7 +111,7 @@ class Main(BoxLayout):
     OBJ_YouTube = None
     OBJ_img_thumb = None
     tuple_checkbox_button = None
-    url_index = -1
+    url_index = 0
     list_all_urls_videos = [None]
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -120,20 +121,24 @@ class Main(BoxLayout):
             self.lab_message.add_line(f"[color=#FF0000] Чудо библиотека [color=#32CD32]ffmpeg[/color] не установлена[/color]")
             self.lab_message.add_line(f"[color=#FF0000] Программа работает в ограниченном режиме[/color]")
         self.lab_message.add_line(f"[color=#32CD32]{30*' '}Запуск программы.[/color]")
-
-
+        self.block_button()
+    @mainthread
     def get_object_youtube(self,url_video):
         """При вставке ссылки на видео в Textinput- получаем
         объект YouTube и уст-ка картинки и названия видео"""
         if url_video:
             if self.get_one_video(url_video):
-                pass
+                self.lab_message.add_line(f"[color=#32CD32] Создаю объект YouTube[/color]")
+                self.lab_message.add_line(f"[color=#32CD32] Объект YouTube создан.[/color]")
+                self.block_button(block=False)
             elif self.get_playlist_video(url_video):
-                first_video = self.list_all_urls_videos[-1] #[0]
+                first_video = self.list_all_urls_videos[0] #[0]
                 self.get_one_video(first_video)
+                self.block_button(block=False)
             else:
                 self.lab_message.add_line(f'    "{url_video}" Не является ссылкой на YouTube.')
         else:
+            self.block_button()
             self.OBJ_YouTube = None
             self.list_all_urls_videos = [None]
             self.install_image_carousel_by_default()
@@ -148,7 +153,7 @@ class Main(BoxLayout):
             self.list_all_urls_videos = list(OBJ_YouTube_Playlist.video_urls) # список URL
             count_videos_url = len(self.list_all_urls_videos)
             self.lab_message.add_line(f"[color=#32CD32] Объект Playlist YouTube создан.[/color]")
-            self.lab_message.add_line(f"[color=#32CD32] Список адресов получен.[/size][/color]")
+            self.lab_message.add_line(f"[color=#32CD32] Список адресов получен.[/color]")
             self.lab_message.add_line(f"[color=#32CD32] Количество видео в плейлисте: [color=#DCDCDC][size=20]{count_videos_url}[/size][/color]")
             return True
         except KeyError:
@@ -161,13 +166,11 @@ class Main(BoxLayout):
             return False
         except Exception as err:
             self.lab_message.add_line(f'[color=#FF0000]{err}[/color] непредвиденная ошибка.')
-
+            return False
 
     def get_one_video(self,url_video):
         try:
             self.OBJ_YouTube = YouTube(url_video, )
-            self.lab_message.add_line(f"[color=#32CD32] Создаю объект YouTube[/color]")
-            self.lab_message.add_line(f"[color=#32CD32] Объект YouTube создан.[/color]")
             self.install_data_this_video()
             return True
         except RegexMatchError:
@@ -281,22 +284,22 @@ class Main(BoxLayout):
             return True
 
     def previous_video(self):
-        self.url_index += 1
-        try:
-            url_next_video = self.list_all_urls_videos[self.url_index]
-            self.get_object_youtube(url_next_video)
-        except IndexError:
-            self.url_index = -1
-            url_next_video = self.list_all_urls_videos[self.url_index]
-            self.get_object_youtube(url_next_video)
-
-    def next_video(self):
         self.url_index -= 1
         try:
             url_next_video = self.list_all_urls_videos[self.url_index]
             self.get_object_youtube(url_next_video)
         except IndexError:
-            self.url_index = -1
+            self.url_index = 0
+            url_next_video = self.list_all_urls_videos[self.url_index]
+            self.get_object_youtube(url_next_video)
+
+    def next_video(self):
+        self.url_index += 1
+        try:
+            url_next_video = self.list_all_urls_videos[self.url_index]
+            self.get_object_youtube(url_next_video)
+        except IndexError:
+            self.url_index = 0
             url_next_video = self.list_all_urls_videos[self.url_index]
             self.get_object_youtube(url_next_video)
 
