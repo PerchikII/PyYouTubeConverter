@@ -172,6 +172,7 @@ class Main(BoxLayout):
         try:
             self.OBJ_YouTube = YouTube(url_video, )
             self.install_data_this_video()
+            self.list_all_urls_videos[0] = url_video
             return True
         except RegexMatchError:
             return False
@@ -303,7 +304,6 @@ class Main(BoxLayout):
             url_next_video = self.list_all_urls_videos[self.url_index]
             self.get_object_youtube(url_next_video)
 
-# Clock.schedule_once(self.operation_complete)
 
     def choice_convert_for_audio(self, uid_check_button,path_file):
         match uid_check_button:
