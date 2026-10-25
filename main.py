@@ -157,7 +157,7 @@ class Main(BoxLayout):
             count_videos_url = len(self.list_all_urls_videos)
             self.lab_message.add_line(f"[color=#32CD32] Объект Playlist YouTube создан.[/color]")
             self.lab_message.add_line(f"[color=#32CD32] Список адресов получен.[/color]")
-            self.lab_message.add_line(f"[color=#32CD32] Количество видео в плейлисте: [color=#DCDCDC][size=20]{count_videos_url}[/size][/color]")
+            self.lab_message.add_line(f"[color=#32CD32] Количество видео в плейлисте:[/color] [color=#DCDCDC][size=20]{count_videos_url}[/size][/color]")
             return True
         except KeyError:
             self.lab_message.add_line(f'"{url_video}" Не является ссылкой на Playlist YouTube.')
@@ -224,8 +224,6 @@ class Main(BoxLayout):
                 self.start_save_one_track()
             else:
                 self.block_button(block=False)
-                self.lab_message.add_line(f"[color=#32CD32]{30 * ' '}Работа завершена.[/color]")
-
         else:
             self.lab_message.add_line(f"[color=#FF0000]{30 * ' '}Вставте ссылку.[/color]")
 
@@ -317,45 +315,36 @@ class Main(BoxLayout):
             case self.mp3.uid:
                 self.lab_message.add_line(f"[color=#32CD32] Узнаю надо ли конвертировать в MP3[/color]")
                 if self.is_a_file(path_file,".mp3"):
-                    self.lab_message.add_line(f"[color=#32CD32] Файл уже существует.[/color]")
-                    self.lab_message.add_line(f"[color=#F8F8FF]     В конвертации не нуждается [/color]")
+                    self.text_file_exist()
                 else:
                     self.lab_message.add_line(f"[color=#32CD32] Конвертирую в MP3[/color]")
                     self.start_convert(path_file,".mp3")
-                self.block_button(block=False)
             case self.wav.uid:
                 self.lab_message.add_line(f"[color=#32CD32] Узнаю надо ли конвертировать в WAV[/color]")
                 if self.is_a_file(path_file,".wav"):
-                    self.lab_message.add_line(f"[color=#32CD32] Файл уже существует.[/color]")
-                    self.lab_message.add_line(f"[color=#32CD32]     В конвертации не нуждается [/color]")
+                    self.text_file_exist()
                 else:
                     self.lab_message.add_line(f"[color=#32CD32] Конвертирую в WAV[/color]")
                     self.start_convert(path_file,".wav")
-                self.block_button(block=False)
             case self.aac.uid:
                 self.lab_message.add_line(f"[color=#32CD32] Узнаю надо ли конвертировать в AAC[/color]")
                 if self.is_a_file(path_file,".aac"):
-                    self.lab_message.add_line(f"[color=#32CD32] Файл уже существует.[/color]")
-                    self.lab_message.add_line(f"[color=#32CD32]     В конвертации не нуждается [/color]")
+                    self.text_file_exist()
                 else:
                     self.lab_message.add_line(f"[color=#32CD32] Конвертирую в AAC[/color]")
                     self.start_convert(path_file,".aac")
-                self.block_button(block=False)
             case self.alac.uid:
                 self.lab_message.add_line(f"[color=#32CD32] Узнаю надо ли конвертировать кодеком ALAC[/color]")
                 if self.is_alac_file(path_file):
-                    self.lab_message.add_line(f"[color=#32CD32] Файл уже существует.[/color]")
-                    self.lab_message.add_line(f"[color=#32CD32]     В конвертации не нуждается [/color]")
+                    self.text_file_exist()
                 else:
                     self.lab_message.add_line(f"[color=#32CD32] Конвертирую M4A кодеком ALAC[/color]")
                     self.start_convert_alac(path_file)
-                self.block_button(block=False)
             case self.m4a.uid:
                 self.lab_message.add_line(f"[color=#32CD32] Узнаю надо ли конвертировать[/color]")
                 if self.is_a_file(path_file,".m4a"):
-                    self.lab_message.add_line(f"[color=#32CD32] Файл уже существует.[/color]")
-                    self.lab_message.add_line(f"[color=#32CD32]     В конвертации не нуждается [/color]")
-                self.block_button(block=False)
+                    self.text_file_exist()
+
 
 
             # case self.avi.uid:
@@ -370,7 +359,8 @@ class Main(BoxLayout):
         new_file = os.path.join(directory,"_alac_"+file)
         ffmpeg.input(path_file).output(new_file, codec="alac").run()
         self.lab_message.add_line("         Конвертация завершена")
-        self.ids.butt_save_one.disabled = False
+        self.lab_message.add_line(f"{30 * ' '}Работа завершена.")
+        self.block_button()
 
     def start_convert(self,path_file,format):
         if format:
@@ -380,7 +370,8 @@ class Main(BoxLayout):
         else:
             self.lab_message.add_line(" В конвертации не нуждается")
         self.lab_message.add_line("         Конвертация завершена")
-        self.ids.butt_save_one.disabled = False
+        self.lab_message.add_line(f"{30 * ' '}Работа завершена.")
+        self.block_button()
 
     # def delete_original_file(self,path_orig_ma4_file):
     #     if os.path.exists(path_orig_ma4_file):
@@ -411,6 +402,11 @@ class Main(BoxLayout):
                     fit_mode="fill")
         self.carusel.clear_widgets()
         self.carusel.add_widget(img)
+    def text_file_exist(self):
+        self.lab_message.add_line(f"[color=#32CD32] Файл уже существует.[/color]")
+        self.lab_message.add_line(f"[color=#32CD32]     В конвертации не нуждается [/color]")
+        self.lab_message.add_line(f"{30 * ' '}Работа завершена.")
+        self.block_button(block=False)
 
 
 
