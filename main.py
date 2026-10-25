@@ -122,15 +122,15 @@ class Main(BoxLayout):
             self.lab_message.add_line(f"[color=#FF0000] Программа работает в ограниченном режиме[/color]")
         self.lab_message.add_line(f"[color=#32CD32]{30*' '}Запуск программы.[/color]")
         self.block_button()
-    @mainthread
+
     def get_object_youtube(self,url_video):
         """При вставке ссылки на видео в Textinput- получаем
         объект YouTube и уст-ка картинки и названия видео"""
         if url_video:
             if self.get_one_video(url_video):
                 self.lab_message.add_line(f"[color=#32CD32] Создаю объект YouTube[/color]")
-                self.lab_message.add_line(f"[color=#32CD32] Объект YouTube создан.[/color]")
                 self.block_button(block=False)
+
             elif self.get_playlist_video(url_video):
                 first_video = self.list_all_urls_videos[0] #[0]
                 self.get_one_video(first_video)
@@ -142,6 +142,9 @@ class Main(BoxLayout):
             self.OBJ_YouTube = None
             self.list_all_urls_videos = [None]
             self.install_image_carousel_by_default()
+
+
+
 
 
     def get_playlist_video(self,url_video):
@@ -179,8 +182,12 @@ class Main(BoxLayout):
         except VideoUnavailable:
             self.lab_message.add_line(f'    Видео {url_video} недоступно для скачивания.')
             return False
+        except Exception as err:
+            self.lab_message.add_line(f'[color=#FF0000]{err}[/color] непредвиденная ошибка.')
+            return False
 
     def install_data_this_video(self,):
+        self.lab_message.add_line(f"[color=#32CD32] Объект YouTube создан.[/color]")
         self.lab_message.add_line(f"[color=#32CD32] Получаю название.[/color]")
         self.lab_message.add_line(f"[color=#32CD32] Получаю картинку.[/color]")
         try:
