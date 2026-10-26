@@ -1,4 +1,5 @@
 #: import sys.exit sys
+#: import os os
 
 <Main>:
     butt_save_one: butt_save_one
@@ -48,7 +49,8 @@
                     duration: "left"
                     loop:True
                     Image:
-                        source: r".\\IMG\\no_image.jpg"
+                        # source: r".\\IMG\\no_image.jpg"
+                        source: os.path.join(root.current_folder,"no_image.jpg")
                         fit_mode: "fill"# "contain"
 
             BoxLayout:
@@ -65,7 +67,7 @@
                                 Rectangle:
                                     size: self.size
                                     pos: self.pos
-                                    source: r".\\IMG\\prev.png"
+                                    source: os.path.join(root.current_folder,"prev.png")
                     BoxLayout:
                         Button:
                             id: butt_save_one
@@ -81,7 +83,7 @@
                                 Rectangle:
                                     size: self.size
                                     pos: self.pos
-                                    source: r".\\IMG\\next.png"
+                                    source: os.path.join(root.current_folder,"next.png")
                 BoxLayout:
                     size_hint_y: .5
                     Button:
@@ -251,25 +253,25 @@
                             Rectangle:
                                 size: self.size
                                 pos: self.pos
-                                source: r".\\IMG\\Python.png"
+                                source: os.path.join(root.current_folder,"Python.png")
                     Label:
                         canvas:
                             Rectangle:
                                 size: self.size
                                 pos: self.pos
-                                source: r".\\IMG\\ffmpegPython.jpg"
+                                source: os.path.join(root.current_folder,"ffmpegPython.jpg")
                     Label:
                         canvas:
                             Rectangle:
                                 size: self.size
                                 pos: self.pos
-                                source: r".\\IMG\\PyTubeFix.jpg"
+                                source: os.path.join(root.current_folder,"PyTubeFix.jpg")
                     Label:
                         canvas:
                             Rectangle:
                                 size: self.size
                                 pos: self.pos
-                                source: r".\\IMG\\Pycharm.jpg"
+                                source: os.path.join(root.current_folder,"Pycharm.jpg")
     BoxLayout:
         size_hint_y: .05
         ReadOnlyTextInput:

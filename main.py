@@ -22,20 +22,25 @@ from pytubefix import YouTube,Playlist
 from kivy.app import App
 from kivy.uix.carousel import Carousel
 from kivy.uix.image import AsyncImage
-from kivy.properties import ObjectProperty
+from kivy.properties import ObjectProperty,StringProperty
 from kivy.uix.image import Image
 from kivy.clock import mainthread
 from kivy.uix.textinput import TextInput
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
 from kivy.lang.builder import Builder
-from kivy.core.window import Window
+
 
 """Директория main.py"""
-current_dir = os.getcwd()
-if not os.path.exists(os.path.join(current_dir, "Download")):
-    os.mkdir(os.path.join(current_dir, "Download"))
-DIR_DOWNLOAD = os.path.join(current_dir, "Download")
+current_dir = os.path.dirname(__file__) # путь к папке
+DIR_KV_FILE = os.path.join(current_dir, "main_kv.kv")
+DIR_IMG_FILE = os.path.join(current_dir, "IMG")
+
+current_download_path = os.getcwd()
+if not os.path.exists(os.path.join(current_download_path, "Download")):
+    os.mkdir(os.path.join(current_download_path, "Download"))
+DIR_DOWNLOAD = os.path.join(current_download_path, "Download")
+
 
 def is_ffmpeg():
     try:
@@ -47,7 +52,7 @@ def is_ffmpeg():
 FFMPEG_LIB = is_ffmpeg()
 
 
-Builder.load_file("main_kv.kv")
+Builder.load_file(DIR_KV_FILE)
 
 class LabelMessage(Label):
     def __init__(self, **kwargs):
@@ -90,7 +95,7 @@ class ReadOnlyTextInput(TextInput):
 
 
 class Main(BoxLayout):
-
+    current_folder = StringProperty(DIR_IMG_FILE)
     mp3 = ObjectProperty()
     wav = ObjectProperty()
     aac = ObjectProperty()
