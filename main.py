@@ -1,8 +1,11 @@
-import ffmpeg
 import os
 from datetime import datetime
 import threading as thr
 import subprocess
+from imageio_ffmpeg import get_ffmpeg_exe
+from imageio_ffmpeg import get_ffmpeg_version
+
+
 
 ###############    Exceptions   #################
 from pytubefix.exceptions import VideoUnavailable
@@ -35,21 +38,23 @@ from kivy.lang.builder import Builder
 current_dir = os.path.dirname(__file__) # путь к папке
 DIR_KV_FILE = os.path.join(current_dir, "main_kv.kv")
 DIR_IMG_FILE = os.path.join(current_dir, "IMG")
-
 current_download_path = os.getcwd()
 if not os.path.exists(os.path.join(current_download_path, "Download")):
     os.mkdir(os.path.join(current_download_path, "Download"))
 DIR_DOWNLOAD = os.path.join(current_download_path, "Download")
 
 
-def is_ffmpeg():
-    try:
-        result = subprocess.run(["ffmpeg", "-version"], capture_output=True, text=True)
-        return result.stdout[:31]  # version ffmpeg
-    except FileNotFoundError:
-        return False
 
-FFMPEG_LIB = is_ffmpeg()
+
+# def is_ffmpeg():
+#     try:
+#         result = subprocess.run(["ffmpeg", "-version"], capture_output=True, text=True)
+#         return result.stdout[:31]  # version ffmpeg
+#     except FileNotFoundError:
+#         return False
+
+FFMPEG_LIB_VERSION = get_ffmpeg_version()
+FFMPEG_LIB_EXE = get_ffmpeg_exe()
 
 
 Builder.load_file(DIR_KV_FILE)
@@ -120,13 +125,20 @@ class Main(BoxLayout):
     list_all_urls_videos = [None]
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        if FFMPEG_LIB:
-            self.lab_message.add_line(f"[color=#32CD32]     {FFMPEG_LIB}[/color]")
+        if FFMPEG_LIB_VERSION:
+            self.lab_message.add_line(f"[color=#32CD32]     {FFMPEG_LIB_VERSION}[/color]")
         else:
             self.lab_message.add_line(f"[color=#FF0000] Чудо библиотека [color=#32CD32]ffmpeg[/color] не установлена[/color]")
             self.lab_message.add_line(f"[color=#FF0000] Программа работает в ограниченном режиме[/color]")
+            self.block_radiobutton()
         self.lab_message.add_line(f"[color=#32CD32]{30*' '}Запуск программы.[/color]")
         self.block_button()
+
+    def block_radiobutton(self):
+        self.mp3.disabled = True
+        self.wav.disabled = True
+        self.aac.disabled = True
+        self.alac.disabled = True
 
     def get_object_youtube(self,url_video):
         """При вставке ссылки на видео в Textinput- получаем
@@ -362,29 +374,41 @@ class Main(BoxLayout):
     def start_convert_alac(self,path_file):
         directory,file = os.path.split(path_file)
         new_file = os.path.join(directory,"_alac_"+file)
-        ffmpeg.input(path_file).output(new_file, codec="alac").run()
+        convert_command = [
+            FFMPEG_LIB_EXE,
+            "-y",
+            "-i",
+            fr"{path_file}",
+            "-c:a", "alac",
+            fr"{new_file}"]
+        try:
+            subprocess.run(convert_command, check=True)
+        except subprocess.CalledProcessError as err:
+            self.lab_message.add_line(f"[color=#FF0000] Ошибка imageio_ffmpeg. КОД:[/color] {err.returncode}")
+            self.lab_message.add_line(f"[color=#FF0000] Ошибка [/color] {err.stderr}")
         self.lab_message.add_line("         Конвертация завершена")
         self.lab_message.add_line(f"{30 * ' '}Работа завершена.")
-        self.block_button()
+        self.block_button(block=False)
 
     def start_convert(self,path_file,format):
+        """-y => разрешить перезапись выходного файла без подтверждения»."""
         if format:
             new_file = os.path.splitext(path_file)[0] + format
-            ffmpeg.input(path_file).output(new_file).run()
-            # self.delete_original_file(path_file)
+            convert_command = [
+                FFMPEG_LIB_EXE,
+                "-y",
+                "-i", fr"{path_file}",
+                fr"{new_file}" ]
+            try:
+                subprocess.run(convert_command, check=True)
+            except subprocess.CalledProcessError as err:
+                self.lab_message.add_line(f"[color=#FF0000] Ошибка imageio_ffmpeg. КОД:[/color] {err.returncode}")
+                self.lab_message.add_line(f"[color=#FF0000] Ошибка [/color] {err.stderr}")
         else:
             self.lab_message.add_line(" В конвертации не нуждается")
         self.lab_message.add_line("         Конвертация завершена")
         self.lab_message.add_line(f"{30 * ' '}Работа завершена.")
-        self.block_button()
-
-    # def delete_original_file(self,path_orig_ma4_file):
-    #     if os.path.exists(path_orig_ma4_file):
-    #         os.remove(path_orig_ma4_file)
-    #         print("Файл удалён")
-    #     else:
-    #         print("Файл не найден")
-
+        self.block_button(block=False)
 
     def is_convert(self):
         self.tuple_checkbox_button = (self.mp3,self.wav,self.aac,
@@ -409,7 +433,7 @@ class Main(BoxLayout):
         self.carusel.add_widget(img)
     def text_file_exist(self):
         self.lab_message.add_line(f"[color=#32CD32] Файл уже существует.[/color]")
-        self.lab_message.add_line(f"[color=#32CD32]     В конвертации не нуждается [/color]")
+        self.lab_message.add_line("     В конвертации не нуждается")
         self.lab_message.add_line(f"{30 * ' '}Работа завершена.")
         self.block_button(block=False)
 
