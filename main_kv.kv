@@ -2,6 +2,7 @@
 #: import os os
 
 <Main>:
+    process_slider: process_slider
     butt_save_one: butt_save_one
     save_playlist_button: save_playlist_button
     prev_button: prev_button
@@ -72,7 +73,7 @@
                         Button:
                             id: butt_save_one
                             text: "Сохранить ролик"
-                            on_release: root.save_one_sound_button()
+                            on_release: root.thread_save_one_sound_button()
 
                     BoxLayout:
                         size_hint_x: .2
@@ -89,17 +90,17 @@
                     Button:
                         id: save_playlist_button
                         text: "Сохранить плейлист"
-                        on_release: root.save_all_playlist()
+                        on_release: root.thread_save_playlist_button()
 
         BoxLayout:
             # TWO
             orientation:"vertical"
             size_hint_x: .05
-            Slider:
+            MySlider:
+                id: process_slider
                 orientation: "vertical"
                 min: 0
                 max: 100
-                value: 50
                 value_track: True
                 value_track_color: 0,1,0
                 background_width: sp(15)
@@ -190,13 +191,14 @@
                                     markup:True
                                     text: "M4A YTube формат"
                                     color: "yellow" if root.m4a.state == "down" else "white"
+
                         BoxLayout:
                             size_hint_y: .2
                             BoxLayout:
                                 size_hint_x: .1
                                 CheckBox:
                                     id: avi
-                                    group: "video"
+                                    # group: "checkbutt"
                                     disabled: True
                                     color: "grey"
                             BoxLayout:
@@ -213,7 +215,7 @@
                                 size_hint_x: .1
                                 CheckBox:
                                     id: mpeg
-                                    group: "video"
+                                    # group: "checkbutt"
                                     disabled: True
                                     color: "grey"
                             BoxLayout:
@@ -229,16 +231,15 @@
                                 size_hint_x: .1
                                 CheckBox:
                                     id: mp4
-                                    group: "video"
-                                    disabled: True
-                                    color: "grey"
+                                    # group: "checkbutt"
+                                    on_active: root.turnoff_radiobutton(True) if self.active else root.turnoff_radiobutton(False)
                             BoxLayout:
                                 size_hint_x: .9
                                 Label:
                                     markup:True
-                                    text: " MP4"
+                                    text: "Видео MP4"
                                     color: "yellow" if root.mp4.state == "down" else "white"
-                                    color: "grey"
+
 
             BoxLayout:
                 orientation: "vertical"
@@ -278,7 +279,7 @@
         ReadOnlyTextInput:
             id: input_ref
             multiline: False
-            on_text: root.get_object_youtube(args[1])
+            on_text: root.create_object_youtube(args[1])
             font_size: sp(17)
             text: "Вставте URL (ссылку) YouTube."
             halign: "center"

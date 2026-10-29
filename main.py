@@ -5,6 +5,7 @@ import subprocess
 from imageio_ffmpeg import get_ffmpeg_exe
 from imageio_ffmpeg import get_ffmpeg_version
 
+# https://youtu.be/_WLdLUlBGOo
 
 
 ###############    Exceptions   #################
@@ -32,6 +33,7 @@ from kivy.uix.textinput import TextInput
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
 from kivy.lang.builder import Builder
+from kivy.uix.slider import Slider
 
 
 """Директория main.py"""
@@ -58,6 +60,12 @@ FFMPEG_LIB_EXE = get_ffmpeg_exe()
 
 
 Builder.load_file(DIR_KV_FILE)
+
+class MySlider(Slider):
+    pass
+
+
+
 
 class LabelMessage(Label):
     def __init__(self, **kwargs):
@@ -110,6 +118,7 @@ class Main(BoxLayout):
     mpeg = ObjectProperty()
     mp4 = ObjectProperty()
 
+    process_slider = ObjectProperty()
     butt_save_one = ObjectProperty()
     save_playlist_button = ObjectProperty()
     next_button = ObjectProperty()
@@ -123,6 +132,7 @@ class Main(BoxLayout):
     tuple_checkbox_button = None
     url_index = 0
     list_all_urls_videos = [None]
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         if FFMPEG_LIB_VERSION:
@@ -140,17 +150,17 @@ class Main(BoxLayout):
         self.aac.disabled = True
         self.alac.disabled = True
 
-    def get_object_youtube(self,url_video):
+    def create_object_youtube(self, url_video):
         """При вставке ссылки на видео в Textinput- получаем
         объект YouTube и уст-ка картинки и названия видео"""
         if url_video:
-            if self.get_one_video(url_video):
+            if self.create_obj_one_video(url_video):
                 self.lab_message.add_line(f"[color=#32CD32] Создаю объект YouTube[/color]")
                 self.block_button(block=False)
 
             elif self.get_playlist_video(url_video):
                 first_video = self.list_all_urls_videos[0] #[0]
-                self.get_one_video(first_video)
+                self.create_obj_one_video(first_video)
                 self.block_button(block=False)
             else:
                 self.lab_message.add_line(f'    "{url_video}" Не является ссылкой на YouTube.')
@@ -188,7 +198,7 @@ class Main(BoxLayout):
             self.lab_message.add_line(f'[color=#FF0000]{err}[/color] непредвиденная ошибка.')
             return False
 
-    def get_one_video(self,url_video):
+    def create_obj_one_video(self, url_video):
         try:
             self.OBJ_YouTube = YouTube(url_video, )
             self.install_data_this_video()
@@ -223,12 +233,17 @@ class Main(BoxLayout):
 
 
 
-    def save_one_sound_button(self):
-        t_one = thr.Thread(target=self.start_save_one_track,daemon=True)
-        t_one.start()
-    def save_all_playlist(self):
-        t_two = thr.Thread(target=self.start_save_playlist, daemon=True)
-        t_two.start()
+    def thread_save_one_sound_button(self):
+        thr.Thread(target=self.start_save_one_track,daemon=True).start()
+
+
+    def thread_save_playlist_button(self):
+        thr.Thread(target=self.start_save_playlist, daemon=True).start()
+
+
+    def thread_download_video(self):
+        thr.Thread(target=self.download_video_stream, daemon=True).start()
+
 
 
     def start_save_playlist(self):
@@ -247,6 +262,26 @@ class Main(BoxLayout):
 
 
 
+    def get_video_stream(self):
+        self.lab_message.add_line(f"[color=#32CD32] Ищу видео.[/color]")
+        res_s = ["240p", "144p"] # ["720p", "480p", "360p", "240p", "144p"] # "1080p"
+        for res in res_s:
+            video = self.OBJ_YouTube.streams.filter(file_extension='mp4',type="video", res=res)
+            if video:
+                self.lab_message.add_line(f"[color=#32CD32] Видео найдено.[/color]")
+                self.lab_message.add_line(f"[color=#32CD32] Качество видео {res}.[/color]")
+                return video[0]
+
+
+    def download_video_stream(self):
+        stream_video = self.get_video_stream()
+        self.lab_message.add_line(f"[color=#32CD32] Качаю видео.[/color]")
+        path_load_file = stream_video.download(DIR_DOWNLOAD, )
+        directory = os.path.split(path_load_file)[0]
+        self.lab_message.add_line(f"[color=#32CD32] Сохраняю видео в:[/color] {directory}")
+        self.lab_message.add_line(f"[color=#32CD32] Файл успешно скачан.[/color]")
+        check_button = self.is_convert()
+        self.choice_convert_for_audio(check_button, path_load_file)
 
 
     def start_save_one_track(self):
@@ -256,6 +291,8 @@ class Main(BoxLayout):
             try:
                 # path_load_file = self.OBJ_YouTube.streams.get_audio_only().download(DIR_DOWNLOAD, )
                 path_load_file = self.OBJ_YouTube.streams.get_default_audio_track().first().download(DIR_DOWNLOAD, )
+                if self.mp4.active: # Если нажата радиокнопка скачивания видео
+                    self.thread_download_video()
                 directory = os.path.split(path_load_file)[0]
                 self.lab_message.add_line(f"[color=#32CD32] Объект YouTube создан.[/color]")
                 self.lab_message.add_line(f"[color=#32CD32] Качаю.[/color]")
@@ -310,21 +347,22 @@ class Main(BoxLayout):
         self.url_index -= 1
         try:
             url_next_video = self.list_all_urls_videos[self.url_index]
-            self.get_object_youtube(url_next_video)
+            self.create_object_youtube(url_next_video)
         except IndexError:
             self.url_index = 0
             url_next_video = self.list_all_urls_videos[self.url_index]
-            self.get_object_youtube(url_next_video)
+            self.create_object_youtube(url_next_video)
 
     def next_video(self):
+        self.process_slider.value = 30
         self.url_index += 1
         try:
             url_next_video = self.list_all_urls_videos[self.url_index]
-            self.get_object_youtube(url_next_video)
+            self.create_object_youtube(url_next_video)
         except IndexError:
             self.url_index = 0
             url_next_video = self.list_all_urls_videos[self.url_index]
-            self.get_object_youtube(url_next_video)
+            self.create_object_youtube(url_next_video)
 
 
     def choice_convert_for_audio(self, uid_check_button,path_file):
@@ -364,12 +402,20 @@ class Main(BoxLayout):
 
 
 
-            # case self.avi.uid:
-            #     self.start_convert(path_file,".avi")
-            # case self.mpeg.uid:
-            #     self.start_convert(path_file,".mpeg")
-            # case self.mp4.uid:
-            #     self.start_convert(path_file,".mp4")
+
+
+
+    def start_combine_video_audio(self,path_file):
+
+        command = [
+            FFMPEG_LIB_EXE,
+            '-i', video_path,  # входной видеофайл
+            '-i', audio_path,  # входной аудиофайл
+            '-c:v', 'copy',  # копировать видеопоток без перекодирования
+            '-y',  # перезаписать выходной файл без подтверждения
+            video_path, ]
+        subprocess.run(convert_command, check=True)
+
 
     def start_convert_alac(self,path_file):
         directory,file = os.path.split(path_file)
@@ -437,6 +483,27 @@ class Main(BoxLayout):
         self.lab_message.add_line(f"{30 * ' '}Работа завершена.")
         self.block_button(block=False)
 
+    def turnoff_radiobutton(self,act):
+        if act:
+            self.aac.disabled = act
+            self.mp3.disabled = act
+            self.wav.disabled = act
+            self.alac.disabled = act
+            self.m4a.state = "down"
+            self.avi.disabled = act
+            self.mpeg.disabled = act
+            self.save_playlist_button.disabled = act
+            self.next_button.disabled = act
+            self.prev_button.disabled = act
+        else:
+            self.mp3.disabled = act
+            self.mp3.state = "down"
+            self.wav.disabled = act
+            self.aac.disabled = act
+            self.alac.disabled = act
+            self.m4a.disabled = act
+
+
 
 
 
@@ -446,7 +513,15 @@ class MyYouTubeApp(App):
 
 MyYouTubeApp().run()
 
-
+# command = [
+#         'ffmpeg',
+#         '-i', video_path,  # входной видеофайл
+#         '-i', audio_path,  # входной аудиофайл
+#         '-c:v', 'copy',  # копировать видеопоток без перекодирования
+#         '-c:a', 'aac', # перекодировать аудио в AAC (для MP4)
+#         '-shortest',  # обрезать по самому короткому файлу
+#         '-y',  # перезаписать выходной файл без подтверждения
+#         video_path, ]
 
 # URL_VIDEO_RUS = "https://www.youtube.com/watch?v=hYP_1jeT4H4"
 # URL_VIDEO_ENG = "https://www.youtube.com/watch?v=D4P9t9_RjUQ"
