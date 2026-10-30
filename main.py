@@ -70,7 +70,7 @@ class MySlider(Slider):
 class LabelMessage(Label):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.max_lines = 10
+        self.max_lines = 13
         self.lines = []
 
     def add_line(self, new_line):
@@ -127,21 +127,24 @@ class Main(BoxLayout):
     input_ref = ObjectProperty()
     youtube_title = ObjectProperty()
     lab_message = ObjectProperty()
-    OBJ_YouTube = None
-    OBJ_img_thumb = None
-    tuple_checkbox_button = None
-    url_index = 0
-    list_all_urls_videos = [None]
+
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        if FFMPEG_LIB_VERSION:
-            self.lab_message.add_line(f"[color=#32CD32]     {FFMPEG_LIB_VERSION}[/color]")
-        else:
-            self.lab_message.add_line(f"[color=#FF0000] Чудо библиотека [color=#32CD32]ffmpeg[/color] не установлена[/color]")
-            self.lab_message.add_line(f"[color=#FF0000] Программа работает в ограниченном режиме[/color]")
-            self.block_radiobutton()
+        self.OBJ_YouTube = None
+        self.OBJ_img_thumb = None
+        self.tuple_checkbox_button = None
+        self.url_index = 0
+        self.list_all_urls_videos = [None]
+        # if FFMPEG_LIB_VERSION:
+        #     self.lab_message.add_line(f"[color=#32CD32]     {FFMPEG_LIB_VERSION}[/color]")
+        # else:
+        #     self.lab_message.add_line(f"[color=#FF0000] Чудо библиотека [color=#32CD32]ffmpeg[/color] не установлена[/color]")
+        #     self.lab_message.add_line(f"[color=#FF0000] Программа работает в ограниченном режиме[/color]")
+        #     self.block_radiobutton()
+        self.lab_message.add_line(f"        [color=#32CD32]{FFMPEG_LIB_VERSION}[/color]")
         self.lab_message.add_line(f"[color=#32CD32]{30*' '}Запуск программы.[/color]")
+        self.lab_message.add_line(f"{50*'*'}")
         self.block_button()
 
     def block_radiobutton(self):
@@ -150,20 +153,31 @@ class Main(BoxLayout):
         self.aac.disabled = True
         self.alac.disabled = True
 
+    def thread_create_playlist_YouTube(self,urlvideo):
+        thr.Thread(target=self.create_obj_one_video,args=(urlvideo,),daemon=True).start()
+
     def create_object_youtube(self, url_video):
         """При вставке ссылки на видео в Textinput- получаем
         объект YouTube и уст-ка картинки и названия видео"""
         if url_video:
-            if self.create_obj_one_video(url_video):
-                self.lab_message.add_line(f"[color=#32CD32] Создаю объект YouTube[/color]")
+            try:
+                self.create_obj_one_video(url_video)
+                self.list_all_urls_videos[0] = url_video
                 self.block_button(block=False)
-
-            elif self.get_playlist_video(url_video):
-                first_video = self.list_all_urls_videos[0] #[0]
-                self.create_obj_one_video(first_video)
-                self.block_button(block=False)
-            else:
-                self.lab_message.add_line(f'    "{url_video}" Не является ссылкой на YouTube.')
+            except (RegexMatchError,Exception) as er:
+                self.lab_message.add_line(f' Ошибка:  [color=#FF0000]{er}[/color]')
+                self.lab_message.add_line('     Объект YouTube не создан!')
+                self.lab_message.add_line(f"[color=#FF0000]{50 * '*'}[/color]")
+                try:
+                    self.get_playlist_video(url_video)
+                    first_video = self.list_all_urls_videos[0]
+                    self.create_obj_one_video(first_video)
+                    self.block_button(block=False)
+                except (RegexMatchError,Exception)as err:
+                    self.lab_message.add_line(f' Ошибка:  [color=#FF0000]{err}[/color]')
+                    self.lab_message.add_line('    Объект PlayList YouTube не создан!')
+                    self.lab_message.add_line(f' [color=#FF0000]{url_video}[/color] Не является ссылкой на YouTube.')
+                    self.lab_message.add_line(f"[color=#FF0000]{50 * '*'}[/color]")
         else:
             self.block_button()
             self.OBJ_YouTube = None
@@ -175,48 +189,28 @@ class Main(BoxLayout):
 
 
     def get_playlist_video(self,url_video):
-        try:
-            self.lab_message.add_line(f"[color=#32CD32] Создаю объект Playlist YouTube.[/color]")
-            self.lab_message.add_line(f"[color=#32CD32] Создание плейлиста требует времени.[/color]")
-            self.lab_message.add_line(f"[color=#32CD32] {30*' '}Ожидайте[/color]")
-            OBJ_YouTube_Playlist = Playlist(url_video, )
-            self.list_all_urls_videos = list(OBJ_YouTube_Playlist.video_urls) # список URL
-            count_videos_url = len(self.list_all_urls_videos)
-            self.lab_message.add_line(f"[color=#32CD32] Объект Playlist YouTube создан.[/color]")
-            self.lab_message.add_line(f"[color=#32CD32] Список адресов получен.[/color]")
-            self.lab_message.add_line(f"[color=#32CD32] Количество видео в плейлисте:[/color] [color=#DCDCDC][size=20]{count_videos_url}[/size][/color]")
-            return True
-        except KeyError:
-            self.lab_message.add_line(f'"{url_video}" Не является ссылкой на Playlist YouTube.')
-            return False
-        except RegexMatchError:
-            return False
-        except VideoUnavailable:
-            self.lab_message.add_line(f'Video [color=#FF0000]{url_video}[/color] недоступно для скачивания.')
-            return False
-        except Exception as err:
-            self.lab_message.add_line(f'[color=#FF0000]{err}[/color] непредвиденная ошибка.')
-            return False
+        self.lab_message.add_line(f"[color=#32CD32] Создаю объект Playlist YouTube.[/color]")
+        self.lab_message.add_line(f"[color=#32CD32] Создание плейлиста требует времени.[/color]")
+        self.lab_message.add_line(f"[color=#32CD32] {30*' '}Ожидайте[/color]")
+        OBJ_YouTube_Playlist = Playlist(url_video, )
+        self.list_all_urls_videos = list(OBJ_YouTube_Playlist.video_urls) # список URL
+        count_videos_url = len(self.list_all_urls_videos)
+        self.lab_message.add_line(f"     Объект Playlist YouTube создан.")
+        self.lab_message.add_line(f"[color=#32CD32] Список адресов получен.[/color]")
+        self.lab_message.add_line(f"[color=#32CD32] Количество видео в плейлисте:[/color] [color=#DCDCDC][size=20]{count_videos_url}[/size][/color]")
+
 
     def create_obj_one_video(self, url_video):
-        try:
-            self.OBJ_YouTube = YouTube(url_video, )
-            self.install_data_this_video()
-            self.list_all_urls_videos[0] = url_video
-            return True
-        except RegexMatchError:
-            return False
-        except VideoUnavailable:
-            self.lab_message.add_line(f'    Видео {url_video} недоступно для скачивания.')
-            return False
-        except Exception as err:
-            self.lab_message.add_line(f'[color=#FF0000]{err}[/color] непредвиденная ошибка.')
-            return False
+        self.lab_message.add_line(f"[color=#32CD32] Создаю объект YouTube[/color]")
+        self.OBJ_YouTube = YouTube(url_video, )
+        self.install_data_this_video()
+
 
     def install_data_this_video(self,):
         self.lab_message.add_line(f"[color=#32CD32] Объект YouTube создан.[/color]")
         self.lab_message.add_line(f"[color=#32CD32] Получаю название.[/color]")
         self.lab_message.add_line(f"[color=#32CD32] Получаю картинку.[/color]")
+        self.lab_message.add_line(f"{50 * '*'}")
         try:
             self.youtube_title.text = self.OBJ_YouTube.title[:70]
             img_thumb = self.OBJ_YouTube.thumbnail_url
@@ -230,11 +224,14 @@ class Main(BoxLayout):
             self.lab_message.add_line(f"[color=#FF0000] {err}[/color]")
             self.lab_message.add_line(f"[color=#FF0000] Возможная причина: [color=#32CD32]Отсутствует соединение с интернетом[/color]")
             self.install_image_carousel_by_default()
+            self.lab_message.add_line(f"{50 * '*'}")
+
+
 
 
 
     def thread_save_one_sound_button(self):
-        thr.Thread(target=self.start_save_one_track,daemon=True).start()
+            thr.Thread(target=self.start_save_one_track,daemon=True).start()
 
 
     def thread_save_playlist_button(self):
@@ -434,6 +431,7 @@ class Main(BoxLayout):
             self.lab_message.add_line(f"[color=#FF0000] Ошибка [/color] {err.stderr}")
         self.lab_message.add_line("         Конвертация завершена")
         self.lab_message.add_line(f"{30 * ' '}Работа завершена.")
+        self.lab_message.add_line(f"{50 * '*'}")
         self.block_button(block=False)
 
     def start_convert(self,path_file,format):
@@ -454,6 +452,7 @@ class Main(BoxLayout):
             self.lab_message.add_line(" В конвертации не нуждается")
         self.lab_message.add_line("         Конвертация завершена")
         self.lab_message.add_line(f"{30 * ' '}Работа завершена.")
+        self.lab_message.add_line(f"{50 * '*'}")
         self.block_button(block=False)
 
     def is_convert(self):
@@ -481,6 +480,7 @@ class Main(BoxLayout):
         self.lab_message.add_line(f"[color=#32CD32] Файл уже существует.[/color]")
         self.lab_message.add_line("     В конвертации не нуждается")
         self.lab_message.add_line(f"{30 * ' '}Работа завершена.")
+        self.lab_message.add_line(f"{50 * '*'}")
         self.block_button(block=False)
 
     def turnoff_radiobutton(self,act):
