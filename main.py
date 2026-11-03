@@ -5,6 +5,8 @@ import subprocess
 from imageio_ffmpeg import get_ffmpeg_exe
 from imageio_ffmpeg import get_ffmpeg_version
 
+from functools import partial
+
 # https://youtu.be/_WLdLUlBGOo
 
 
@@ -14,19 +16,12 @@ from pytubefix.exceptions import RegexMatchError
 from pytubefix.exceptions import AgeRestrictedError
 from pytubefix.exceptions import MaxRetriesExceeded
 
-
-
-"""urllib.error.URLError: <urlopen error [WinError 10060] Попытка установить соединение была безуспешной, 
-т.к. от другого компьютера за требуемое время не получен нужный отклик, или было разорвано уже установленное
- соединение из-за неверного отклика уже подключенного компьютера>"""
-from pytubefix import YouTube,Playlist
-
-
+from pytubefix import YouTube, Playlist
 
 from kivy.app import App
 from kivy.uix.carousel import Carousel
 from kivy.uix.image import AsyncImage
-from kivy.properties import ObjectProperty,StringProperty
+from kivy.properties import ObjectProperty, StringProperty
 from kivy.uix.image import Image
 from kivy.clock import mainthread
 from kivy.uix.textinput import TextInput
@@ -34,19 +29,16 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
 from kivy.lang.builder import Builder
 from kivy.uix.slider import Slider
-
+from kivy.clock import Clock
 
 """Директория main.py"""
-current_dir = os.path.dirname(__file__) # путь к папке
+current_dir = os.path.dirname(__file__)  # путь к папке
 DIR_KV_FILE = os.path.join(current_dir, "main_kv.kv")
 DIR_IMG_FILE = os.path.join(current_dir, "IMG")
 current_download_path = os.getcwd()
 if not os.path.exists(os.path.join(current_download_path, "Download")):
     os.mkdir(os.path.join(current_download_path, "Download"))
 DIR_DOWNLOAD = os.path.join(current_download_path, "Download")
-
-
-
 
 # def is_ffmpeg():
 #     try:
@@ -58,25 +50,23 @@ DIR_DOWNLOAD = os.path.join(current_download_path, "Download")
 FFMPEG_LIB_VERSION = get_ffmpeg_version()
 FFMPEG_LIB_EXE = get_ffmpeg_exe()
 
-
 Builder.load_file(DIR_KV_FILE)
+
 
 class MySlider(Slider):
     pass
 
 
-
-
 class LabelMessage(Label):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.max_lines = 13
+        self.max_lines = 12
         self.lines = []
 
     def add_line(self, new_line):
         now = datetime.now()
         time_str = now.strftime("%H:%M:%S")
-        self.lines.append(time_str +" "+ new_line)
+        self.lines.append(time_str + " " + new_line)
         if len(self.lines) > self.max_lines:
             self.lines.pop(0)
         self.update_text()
@@ -85,17 +75,20 @@ class LabelMessage(Label):
         """Обновляет текст Label."""
         self.text = '\n'.join(self.lines)
 
+
 # Уил Смит
-# https://www.youtube.com/watch?v=fiBLgEx6svA&list=RDfiBLgEx6svA&start_radio=1&pp=oAcB
+# https://www.youtube.com/watch?v=fiBLgEx6svA&list=RDfiBLgEx6svA&start_radio=1
 # Playlist
 # https://www.youtube.com/playlist?list=PLF2wVlabSmeE
 # https://youtube.com/playlist?list=PLD6SPjEPomathzOFzCSvvMAlthuqRnSa9&si=KY77eGjr3fWRXrZH
 class MyCarousel(Carousel):
     pass
 
+
 class ReadOnlyTextInput(TextInput):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+
     # def do_backspace(self, from_undo=True, mode='bkspc'):
     #     self.text = ""
 
@@ -128,33 +121,32 @@ class Main(BoxLayout):
     youtube_title = ObjectProperty()
     lab_message = ObjectProperty()
 
-
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.MySliderFlag = True
         self.OBJ_YouTube = None
         self.OBJ_img_thumb = None
         self.tuple_checkbox_button = None
         self.url_index = 0
         self.list_all_urls_videos = [None]
-        # if FFMPEG_LIB_VERSION:
-        #     self.lab_message.add_line(f"[color=#32CD32]     {FFMPEG_LIB_VERSION}[/color]")
-        # else:
-        #     self.lab_message.add_line(f"[color=#FF0000] Чудо библиотека [color=#32CD32]ffmpeg[/color] не установлена[/color]")
-        #     self.lab_message.add_line(f"[color=#FF0000] Программа работает в ограниченном режиме[/color]")
-        #     self.block_radiobutton()
         self.lab_message.add_line(f"        [color=#32CD32]{FFMPEG_LIB_VERSION}[/color]")
-        self.lab_message.add_line(f"[color=#32CD32]{30*' '}Запуск программы.[/color]")
-        self.lab_message.add_line(f"{50*'*'}")
+        self.lab_message.add_line(f"[color=#32CD32]{30 * ' '}Запуск программы.[/color]")
+        self.lab_message.add_line(f"{50 * '*'}")
         self.block_button()
 
-    def block_radiobutton(self):
-        self.mp3.disabled = True
-        self.wav.disabled = True
-        self.aac.disabled = True
-        self.alac.disabled = True
+    # @mainthread
+    def slider_callback(self, qt):
+        if self.MySliderFlag:
+            self.process_slider.value += 1
+            if self.process_slider.value >= 100:
+                self.process_slider.value = 0
+        else:
+            return False
 
-    def thread_create_playlist_YouTube(self,urlvideo):
-        thr.Thread(target=self.create_obj_one_video,args=(urlvideo,),daemon=True).start()
+    def thread_create_playlist_YouTube(self, urlvideo, qt):
+        thr.Thread(target=self.get_playlist_video, args=(urlvideo,), daemon=True).start()
+        self.MySliderFlag = True
+        Clock.schedule_interval(self.slider_callback, .1)
 
     def create_object_youtube(self, url_video):
         """При вставке ссылки на видео в Textinput- получаем
@@ -164,49 +156,54 @@ class Main(BoxLayout):
                 self.create_obj_one_video(url_video)
                 self.list_all_urls_videos[0] = url_video
                 self.block_button(block=False)
-            except (RegexMatchError,Exception) as er:
+                self.MySliderFlag = False
+                self.process_slider.value = 100
+            except (RegexMatchError, Exception) as er:
                 self.lab_message.add_line(f' Ошибка:  [color=#FF0000]{er}[/color]')
-                self.lab_message.add_line('     Объект YouTube не создан!')
+                self.lab_message.add_line('             Объект YouTube не создан!')
                 self.lab_message.add_line(f"[color=#FF0000]{50 * '*'}[/color]")
-                try:
-                    self.get_playlist_video(url_video)
-                    first_video = self.list_all_urls_videos[0]
-                    self.create_obj_one_video(first_video)
-                    self.block_button(block=False)
-                except (RegexMatchError,Exception)as err:
-                    self.lab_message.add_line(f' Ошибка:  [color=#FF0000]{err}[/color]')
-                    self.lab_message.add_line('    Объект PlayList YouTube не создан!')
-                    self.lab_message.add_line(f' [color=#FF0000]{url_video}[/color] Не является ссылкой на YouTube.')
-                    self.lab_message.add_line(f"[color=#FF0000]{50 * '*'}[/color]")
+                self.lab_message.add_line(f"[color=#32CD32] Создаю объект Playlist YouTube.[/color]")
+                self.lab_message.add_line(f"[color=#32CD32] Создание плейлиста требует времени.[/color]")
+                self.lab_message.add_line(f"[color=#32CD32] {30 * ' '}Ожидайте[/color]")
+                Clock.schedule_once(partial(self.thread_create_playlist_YouTube, url_video), .1)
+
         else:
             self.block_button()
             self.OBJ_YouTube = None
             self.list_all_urls_videos = [None]
             self.install_image_carousel_by_default()
 
-
-
-
-
-    def get_playlist_video(self,url_video):
-        self.lab_message.add_line(f"[color=#32CD32] Создаю объект Playlist YouTube.[/color]")
-        self.lab_message.add_line(f"[color=#32CD32] Создание плейлиста требует времени.[/color]")
-        self.lab_message.add_line(f"[color=#32CD32] {30*' '}Ожидайте[/color]")
-        OBJ_YouTube_Playlist = Playlist(url_video, )
-        self.list_all_urls_videos = list(OBJ_YouTube_Playlist.video_urls) # список URL
+    @mainthread
+    def message_create_playlist(self):
         count_videos_url = len(self.list_all_urls_videos)
-        self.lab_message.add_line(f"     Объект Playlist YouTube создан.")
+        self.lab_message.add_line(f"        Объект Playlist YouTube создан.")
         self.lab_message.add_line(f"[color=#32CD32] Список адресов получен.[/color]")
-        self.lab_message.add_line(f"[color=#32CD32] Количество видео в плейлисте:[/color] [color=#DCDCDC][size=20]{count_videos_url}[/size][/color]")
+        self.lab_message.add_line(
+            f"[color=#32CD32] Количество видео в плейлисте:[/color] [color=#DCDCDC][size=20]{count_videos_url}[/size][/color]")
+        self.lab_message.add_line(f"{50 * '*'}")
+        first_video = self.list_all_urls_videos[0]
+        self.create_object_youtube(first_video)
 
+    def get_playlist_video(self, url_video):
+        try:
+            OBJ_YouTube_Playlist = Playlist(url_video, )
+            if OBJ_YouTube_Playlist:
+                self.list_all_urls_videos = list(OBJ_YouTube_Playlist.video_urls)  # список URL
+                self.message_create_playlist()
+                self.block_button(block=False)
+        except (KeyError, Exception):
+            self.lab_message.add_line(
+                f' Ошибка: [color=#FF0000]{url_video}[/color] Не является ссылкой на PlayList YouTube.')
+            self.lab_message.add_line('         Объект PlayList YouTube не создан!')
+            self.lab_message.add_line(f"[color=#FF0000]{50 * '*'}[/color]")
+            self.MySliderFlag = False
 
     def create_obj_one_video(self, url_video):
         self.lab_message.add_line(f"[color=#32CD32] Создаю объект YouTube[/color]")
         self.OBJ_YouTube = YouTube(url_video, )
         self.install_data_this_video()
 
-
-    def install_data_this_video(self,):
+    def install_data_this_video(self, ):
         self.lab_message.add_line(f"[color=#32CD32] Объект YouTube создан.[/color]")
         self.lab_message.add_line(f"[color=#32CD32] Получаю название.[/color]")
         self.lab_message.add_line(f"[color=#32CD32] Получаю картинку.[/color]")
@@ -222,24 +219,20 @@ class Main(BoxLayout):
             self.lab_message.add_line(f"[color=#FF0000] {err}[/color]")
             self.lab_message.add_line(f"[color=#FF0000] Ошибка получения картинки[/color]")
             self.lab_message.add_line(f"[color=#FF0000] {err}[/color]")
-            self.lab_message.add_line(f"[color=#FF0000] Возможная причина: [color=#32CD32]Отсутствует соединение с интернетом[/color]")
+            self.lab_message.add_line(
+                f"[color=#FF0000] Возможная причина:[/color] [color=#32CD32]Отсутствует соединение с интернетом[/color]")
             self.install_image_carousel_by_default()
             self.lab_message.add_line(f"{50 * '*'}")
 
-
-
-
-
-    def thread_save_one_sound_button(self):
-            thr.Thread(target=self.start_save_one_track,daemon=True).start()
-
+    def thread_save_one_track_button(self):  # Нажатие кнопки "Сохранить ролик"
+        thr.Thread(target=self.start_save_one_track, daemon=True).start()
 
     def thread_save_playlist_button(self):
         thr.Thread(target=self.start_save_playlist, daemon=True).start()
 
-
     def thread_download_video(self):
         thr.Thread(target=self.download_video_stream, daemon=True).start()
+
 
 
 
@@ -247,39 +240,32 @@ class Main(BoxLayout):
         if self.input_ref.text:
             self.block_button()
             self.lab_message.add_line(f"[color=#DCDCDC]Чем больше количество видео, тем длительнее работа.[/color]")
-            self.lab_message.add_line(f"[color=#32CD32]{30*' '}Ожидайте.[/color]")
+            self.lab_message.add_line(f"[color=#32CD32]{30 * ' '}Ожидайте.[/color]")
             for url_video in self.list_all_urls_videos:
-                self.OBJ_YouTube = YouTube(url_video,)
+                self.create_object_youtube(url_video)
+                # self.OBJ_YouTube = YouTube(url_video, )
                 self.start_save_one_track()
             else:
                 self.block_button(block=False)
         else:
             self.lab_message.add_line(f"[color=#FF0000]{30 * ' '}Вставте ссылку.[/color]")
 
-
-
-
     def get_video_stream(self):
-        self.lab_message.add_line(f"[color=#32CD32] Ищу видео.[/color]")
-        res_s = ["240p", "144p"] # ["720p", "480p", "360p", "240p", "144p"] # "1080p"
+        res_s = ["240p", "144p"]  # ["720p", "480p", "360p", "240p", "144p"] # "1080p"
         for res in res_s:
-            video = self.OBJ_YouTube.streams.filter(file_extension='mp4',type="video", res=res)
+            video = self.OBJ_YouTube.streams.filter(file_extension='mp4', type="video", res=res)
             if video:
                 self.lab_message.add_line(f"[color=#32CD32] Видео найдено.[/color]")
-                self.lab_message.add_line(f"[color=#32CD32] Качество видео {res}.[/color]")
+                self.lab_message.add_line(f"[color=#32CD32] Качество видео[/color] {res}.")
                 return video[0]
-
 
     def download_video_stream(self):
         stream_video = self.get_video_stream()
-        self.lab_message.add_line(f"[color=#32CD32] Качаю видео.[/color]")
         path_load_file = stream_video.download(DIR_DOWNLOAD, )
         directory = os.path.split(path_load_file)[0]
         self.lab_message.add_line(f"[color=#32CD32] Сохраняю видео в:[/color] {directory}")
         self.lab_message.add_line(f"[color=#32CD32] Файл успешно скачан.[/color]")
-        check_button = self.is_convert()
-        self.choice_convert_for_audio(check_button, path_load_file)
-
+        self.lab_message.add_line(f"{50 * '*'}")
 
     def start_save_one_track(self):
         if self.input_ref.text:
@@ -288,53 +274,61 @@ class Main(BoxLayout):
             try:
                 # path_load_file = self.OBJ_YouTube.streams.get_audio_only().download(DIR_DOWNLOAD, )
                 path_load_file = self.OBJ_YouTube.streams.get_default_audio_track().first().download(DIR_DOWNLOAD, )
-                if self.mp4.active: # Если нажата радиокнопка скачивания видео
-                    self.thread_download_video()
                 directory = os.path.split(path_load_file)[0]
                 self.lab_message.add_line(f"[color=#32CD32] Объект YouTube создан.[/color]")
                 self.lab_message.add_line(f"[color=#32CD32] Качаю.[/color]")
                 self.lab_message.add_line(f"[color=#32CD32] {30 * ' '}Ждём![/color]")
                 self.lab_message.add_line(f"[color=#32CD32] Сохраняю в:[/color] {directory}")
-
+                self.lab_message.add_line(f"[color=#32CD32] Файл успешно скачан.[/color]")
+                check_button = self.is_convert()
+                self.choice_convert_for_audio(check_button, path_load_file)
             except AttributeError:
                 video_url = self.input_ref.text
                 self.lab_message.add_line(f"    [color=#32CD32] Объект не создан.[/color]")
                 self.lab_message.add_line(f'    "{video_url}"- [color=#FF0000]не является ссылкой YouTube.[/color]')
                 self.lab_message.add_line(f'    [color=#FF0000]Сорвалась ссылка[/color]')
                 self.lab_message.add_line(f'    [color=#FF0000]Перезапустите программу[/color]')
+                self.lab_message.add_line(f"[color=#FF0000]{50 * '*'}[/color]")
                 self.block_button(block=False)
                 self.install_image_carousel_by_default()
             except AgeRestrictedError:
-                self.lab_message.add_line(f"    Ютубчег выставил этому видео ограничение 18+ [color=#FF0000]Скачать невозможно.[/color] ")
+                self.lab_message.add_line(
+                    f"    Ютубчег выставил этому видео ограничение 18+ [color=#FF0000]Скачать невозможно.[/color] ")
+                self.lab_message.add_line(f"[color=#FF0000]{50 * '*'}[/color]")
                 self.block_button(block=False)
             except MaxRetriesExceeded:
-                self.lab_message.add_line(f"[color=#FF0000] Превышено максимальное количество повторных попыток соединения[/color]")
+                self.lab_message.add_line(
+                    f"[color=#FF0000] Превышено максимальное количество повторных попыток соединения[/color]")
                 self.lab_message.add_line(f"[color=#FF0000] Плохое интернет соединение.[/color]")
                 self.lab_message.add_line(f"[color=#FF0000] Ютубчег просто так не отдаст контент на халяву.[/color]")
                 self.lab_message.add_line(f"[color=#FF0000] Попробуйте позже.[/color]")
+                self.lab_message.add_line(f"[color=#FF0000]{50 * '*'}[/color]")
                 self.block_button(block=False)
             except VideoUnavailable:
                 self.lab_message.add_line(f"[color=#FF0000] Видео не доступно для скачивания[/color]")
+                self.lab_message.add_line(f"[color=#FF0000]{50 * '*'}[/color]")
                 self.block_button(block=False)
             except Exception as err:
                 self.lab_message.add_line(f"[color=#FF0000] {err}[/color]")
                 self.lab_message.add_line(f"[color=#FF0000] Попробуйте позже.[/color]")
+                self.lab_message.add_line(f"[color=#FF0000]{50 * '*'}[/color]")
                 self.block_button(block=False)
             else:
-                self.lab_message.add_line(f"[color=#32CD32] Файл успешно скачан.[/color]")
-                check_button = self.is_convert()
-                self.choice_convert_for_audio(check_button,path_load_file)
+                if self.mp4.active:  # Если нажата радиокнопка скачивания видео
+                    self.lab_message.add_line(f"[color=#32CD32] Ищу видео.[/color]")
+                    self.thread_download_video()
+                    # self.download_video_stream()
         else:
             self.install_image_carousel_by_default()
 
-    def is_a_file(self,path_file,format_file):
+    def is_a_file(self, path_file, format_file):
         new_file_path = os.path.splitext(path_file)[0] + format_file
         directory = os.path.split(path_file)[0]
         new_file = os.path.split(new_file_path)[1]
         if new_file in os.listdir(directory):
             return True
 
-    def is_alac_file(self,path_file):
+    def is_alac_file(self, path_file):
         directory, file = os.path.split(path_file)
         new_file = "_alac_" + file
         if new_file in os.listdir(directory):
@@ -351,7 +345,6 @@ class Main(BoxLayout):
             self.create_object_youtube(url_next_video)
 
     def next_video(self):
-        self.process_slider.value = 30
         self.url_index += 1
         try:
             url_next_video = self.list_all_urls_videos[self.url_index]
@@ -361,30 +354,29 @@ class Main(BoxLayout):
             url_next_video = self.list_all_urls_videos[self.url_index]
             self.create_object_youtube(url_next_video)
 
-
-    def choice_convert_for_audio(self, uid_check_button,path_file):
+    def choice_convert_for_audio(self, uid_check_button, path_file):
         match uid_check_button:
             case self.mp3.uid:
                 self.lab_message.add_line(f"[color=#32CD32] Узнаю надо ли конвертировать в MP3[/color]")
-                if self.is_a_file(path_file,".mp3"):
+                if self.is_a_file(path_file, ".mp3"):
                     self.text_file_exist()
                 else:
                     self.lab_message.add_line(f"[color=#32CD32] Конвертирую в MP3[/color]")
-                    self.start_convert(path_file,".mp3")
+                    self.start_convert(path_file, ".mp3")
             case self.wav.uid:
                 self.lab_message.add_line(f"[color=#32CD32] Узнаю надо ли конвертировать в WAV[/color]")
-                if self.is_a_file(path_file,".wav"):
+                if self.is_a_file(path_file, ".wav"):
                     self.text_file_exist()
                 else:
                     self.lab_message.add_line(f"[color=#32CD32] Конвертирую в WAV[/color]")
-                    self.start_convert(path_file,".wav")
+                    self.start_convert(path_file, ".wav")
             case self.aac.uid:
                 self.lab_message.add_line(f"[color=#32CD32] Узнаю надо ли конвертировать в AAC[/color]")
-                if self.is_a_file(path_file,".aac"):
+                if self.is_a_file(path_file, ".aac"):
                     self.text_file_exist()
                 else:
                     self.lab_message.add_line(f"[color=#32CD32] Конвертирую в AAC[/color]")
-                    self.start_convert(path_file,".aac")
+                    self.start_convert(path_file, ".aac")
             case self.alac.uid:
                 self.lab_message.add_line(f"[color=#32CD32] Узнаю надо ли конвертировать кодеком ALAC[/color]")
                 if self.is_alac_file(path_file):
@@ -394,15 +386,10 @@ class Main(BoxLayout):
                     self.start_convert_alac(path_file)
             case self.m4a.uid:
                 self.lab_message.add_line(f"[color=#32CD32] Узнаю надо ли конвертировать[/color]")
-                if self.is_a_file(path_file,".m4a"):
+                if self.is_a_file(path_file, ".m4a"):
                     self.text_file_exist()
 
-
-
-
-
-
-    def start_combine_video_audio(self,path_file):
+    def start_combine_video_audio(self, path_file):
 
         command = [
             FFMPEG_LIB_EXE,
@@ -413,10 +400,9 @@ class Main(BoxLayout):
             video_path, ]
         subprocess.run(convert_command, check=True)
 
-
-    def start_convert_alac(self,path_file):
-        directory,file = os.path.split(path_file)
-        new_file = os.path.join(directory,"_alac_"+file)
+    def start_convert_alac(self, path_file):
+        directory, file = os.path.split(path_file)
+        new_file = os.path.join(directory, "_alac_" + file)
         convert_command = [
             FFMPEG_LIB_EXE,
             "-y",
@@ -434,7 +420,7 @@ class Main(BoxLayout):
         self.lab_message.add_line(f"{50 * '*'}")
         self.block_button(block=False)
 
-    def start_convert(self,path_file,format):
+    def start_convert(self, path_file, format):
         """-y => разрешить перезапись выходного файла без подтверждения»."""
         if format:
             new_file = os.path.splitext(path_file)[0] + format
@@ -442,7 +428,7 @@ class Main(BoxLayout):
                 FFMPEG_LIB_EXE,
                 "-y",
                 "-i", fr"{path_file}",
-                fr"{new_file}" ]
+                fr"{new_file}"]
             try:
                 subprocess.run(convert_command, check=True)
             except subprocess.CalledProcessError as err:
@@ -456,14 +442,14 @@ class Main(BoxLayout):
         self.block_button(block=False)
 
     def is_convert(self):
-        self.tuple_checkbox_button = (self.mp3,self.wav,self.aac,
-                                      self.alac,self.m4a,self.avi,
-                                      self.mpeg,self.mp4,)
+        self.tuple_checkbox_button = (self.mp3, self.wav, self.aac,
+                                      self.alac, self.m4a, self.avi,
+                                      self.mpeg, self.mp4,)
         for butt in self.tuple_checkbox_button:
             if butt.state == "down":
-                 return butt.uid
+                return butt.uid
 
-    def block_button(self,block=True):
+    def block_button(self, block=True):
         self.save_playlist_button.disabled = block
         self.next_button.disabled = block
         self.prev_button.disabled = block
@@ -472,10 +458,11 @@ class Main(BoxLayout):
     @mainthread
     def install_image_carousel_by_default(self):
         self.youtube_title.text = ""
-        img = Image(source=os.path.join(current_dir,"IMG","no_image.jpg"),
+        img = Image(source=os.path.join(current_dir, "IMG", "no_image.jpg"),
                     fit_mode="fill")
         self.carusel.clear_widgets()
         self.carusel.add_widget(img)
+
     def text_file_exist(self):
         self.lab_message.add_line(f"[color=#32CD32] Файл уже существует.[/color]")
         self.lab_message.add_line("     В конвертации не нуждается")
@@ -483,7 +470,7 @@ class Main(BoxLayout):
         self.lab_message.add_line(f"{50 * '*'}")
         self.block_button(block=False)
 
-    def turnoff_radiobutton(self,act):
+    def turnoff_radiobutton(self, act):
         if act:
             self.aac.disabled = act
             self.mp3.disabled = act
@@ -504,12 +491,10 @@ class Main(BoxLayout):
             self.m4a.disabled = act
 
 
-
-
-
 class MyYouTubeApp(App):
     def build(self):
         return Main()
+
 
 MyYouTubeApp().run()
 
@@ -536,9 +521,8 @@ MyYouTubeApp().run()
 #
 #
 #     load_audio = yt.streams.get_audio_only().download(out_path,)
-    # direct,_ = os.path.split(test_audio)
-    # file_dir = os.path.join(direct,"test_file.mp4")
-
+# direct,_ = os.path.split(test_audio)
+# file_dir = os.path.join(direct,"test_file.mp4")
 
 
 # if __name__ == '__main__':
@@ -587,5 +571,3 @@ MyYouTubeApp().run()
 #
 # def seek_position(self):
 #     self.sound.seek(2000)
-
-
