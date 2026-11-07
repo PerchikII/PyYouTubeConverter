@@ -1,5 +1,18 @@
 #: import sys.exit sys
 #: import os os
+<ScrollLabel@ScrollView>:
+    bar_width: 10
+    do_scroll_x: False
+<MyLabel@Label>:
+    size_hint_y: None
+    height: self.texture_size[1]
+    text_size: self.width, None
+    valign: 'top'
+    halign: 'left'
+    text: "empty"
+
+
+
 
 <Main>:
     process_slider: process_slider
@@ -95,17 +108,29 @@
         BoxLayout:
             # TWO
             orientation:"vertical"
-            size_hint_x: .05
-            MySlider:
-                id: process_slider
-                orientation: "vertical"
-                min: 0
-                max: 100
-                value_track: True
-                value_track_color: 0,1,0
-                background_width: sp(15)
-                cursor_size: sp(1),sp(1)
-
+            size_hint_x: .09
+            # padding: dp(10),0,dp(10),0
+            BoxLayout:
+                size_hint_y: .9
+                MySlider:
+                    id: process_slider
+                    orientation: "vertical"
+                    min: 0
+                    max: 100
+                    value_track: True
+                    value_track_color: 0,1,0
+                    background_width: sp(15)
+                    cursor_size: sp(1),sp(1)
+            BoxLayout:
+                size_hint_y: .1
+                Label:
+                    text: "1555"
+#                    canvas.after:
+#                        Color:
+#                            rgba: 1, 1, 1, 1   # белый цвет рамки
+#                        Line:
+#                            width: .5           # толщина рамки
+#                            rectangle: (self.x, self.y, self.width, self.height)
 
 
         BoxLayout:

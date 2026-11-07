@@ -655,7 +655,7 @@ class Main(BoxLayout):
         thr.Thread(target=self.start_save_playlist, daemon=True).start()
 
     def positive_slider(self):
-        self.process_slider.value_track_color = "green"
+        self.process_slider.value_track_color = "#228B22" # "green" # "ForestGreen"
         self.process_slider.value = 100
     def negative_slider(self):
         self.process_slider.value_track_color = "red"
