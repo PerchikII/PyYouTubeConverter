@@ -1,20 +1,10 @@
 #: import sys.exit sys
 #: import os os
-<ScrollLabel@ScrollView>:
-    bar_width: 10
-    do_scroll_x: False
-<MyLabel@Label>:
-    size_hint_y: None
-    height: self.texture_size[1]
-    text_size: self.width, None
-    valign: 'top'
-    halign: 'left'
-    text: "empty"
-
-
-
 
 <Main>:
+    lab_quant_videos: lab_quant_videos
+    lab_message: lab_message
+    scrll: scrll
     process_slider: process_slider
     butt_save_one: butt_save_one
     save_playlist_button: save_playlist_button
@@ -31,7 +21,7 @@
     mpeg:mpeg
     mp4:mp4
     carusel: carusel
-    lab_message:lab_message
+
     padding:dp(10)
     orientation: "vertical"
     BoxLayout:
@@ -122,9 +112,21 @@
                     background_width: sp(15)
                     cursor_size: sp(1),sp(1)
             BoxLayout:
+#                canvas.before:
+#                    Color:
+#                        rgba: 1, 0, 0, 1   # белый цвет рамки
+#                    Rectangle:
+#                        size: self.size
+#                        pos: self.pos
                 size_hint_y: .1
                 Label:
-                    text: "1555"
+                    text: "0"
+                    id: lab_quant_videos
+                    font_size: sp(20)
+                    text_size:self.size
+                    halign: "center"
+                    bold: True
+
 #                    canvas.after:
 #                        Color:
 #                            rgba: 1, 1, 1, 1   # белый цвет рамки
@@ -316,13 +318,15 @@
                     rectangle: (self.x, self.y, self.width, self.height)
 
     BoxLayout:
+        id: box
         size_hint_y: .3
-        LabelMessage:
-            id: lab_message
-            markup:True
-            text_size: self.size
-            halign: "left"
-            valign: "top"
+        size_hint_x: 1
+        MyScroll:
+            id: scrll
+            size_hint_x: 1
+            size: box.width, box.height
+            BoxMessage:
+                id: lab_message
     BoxLayout:
         size_hint_y: .02
         Label:

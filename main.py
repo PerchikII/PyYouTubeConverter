@@ -11,6 +11,13 @@ from functools import partial
 
 # https://youtu.be/_WLdLUlBGOo
 
+# Уил Смит
+# https://www.youtube.com/watch?v=fiBLgEx6svA&list=RDfiBLgEx6svA&start_radio=1
+
+# Playlist
+# https://www.youtube.com/playlist?list=PLF2wVlabSmeE
+# https://youtube.com/playlist?list=PLD6SPjEPomathzOFzCSvvMAlthuqRnSa9&si=KY77eGjr3fWRXrZH
+
 
 ###############    Exceptions   #################
 from pytubefix.exceptions import VideoUnavailable
@@ -28,10 +35,14 @@ from kivy.uix.image import Image
 from kivy.clock import mainthread
 from kivy.uix.textinput import TextInput
 from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.scrollview import ScrollView
 from kivy.uix.label import Label
 from kivy.lang.builder import Builder
 from kivy.uix.slider import Slider
 from kivy.clock import Clock
+from kivy.core.window import Window
+
+from kivy.metrics import sp, dp
 
 """Директория main.py"""
 current_dir = os.path.dirname(__file__)  # путь к папке
@@ -59,39 +70,50 @@ class MySlider(Slider):
     pass
 
 
+class MyCarousel(Carousel):
+    pass
+
+class MyScroll(ScrollView):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.bar_width = 10
+        self.do_scroll_x = False
+
 class LabelMessage(Label):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.max_lines = 12
-        self.lines = []
+        self.markup = True
+        self.size_hint_x = 1
+        self.size_hint_y = None
+        self.font_size = sp(16)
+        self.height = self.font_size + sp(2)
+        self.halign = "left"
+        self.text_size = (Window.width - dp(20), None)
 
-    def add_line(self, new_line):
+
+
+class BoxMessage(BoxLayout):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.orientation = "vertical"
+        self.size_hint_y = None
+        self.size_hint_x = 1
+        self.bind(minimum_height=self.setter('height'))
+        print(dir(self))
+
+
+    def add_line(self, message):
+        """Вставляет время и сообщение в Label.
+        Размещает у себя"""
         now = datetime.now()
         time_str = now.strftime("%H:%M:%S")
-        self.lines.append(time_str + " " + new_line)
-        if len(self.lines) > self.max_lines:
-            self.lines.pop(0)
-        self.update_text()
-
-    def update_text(self):
-        """Обновляет текст Label."""
-        self.text = '\n'.join(self.lines)
-
-
-# Уил Смит
-# https://www.youtube.com/watch?v=fiBLgEx6svA&list=RDfiBLgEx6svA&start_radio=1
-# Playlist
-# https://www.youtube.com/playlist?list=PLF2wVlabSmeE
-# https://youtube.com/playlist?list=PLD6SPjEPomathzOFzCSvvMAlthuqRnSa9&si=KY77eGjr3fWRXrZH
-class MyCarousel(Carousel):
-    pass
+        lbl_message = LabelMessage(text=time_str + " " + message)
+        self.add_widget(lbl_message)
 
 
 class ReadOnlyTextInput(TextInput):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-
-
 
     def on_touch_up(self, touch):
         if self.collide_point(*touch.pos):
@@ -99,8 +121,7 @@ class ReadOnlyTextInput(TextInput):
                 self.text = ""
             if touch.is_double_tap:
                 self.text = ""
-# self.process_slider.value_track_color = "green"
-# self.process_slider.value_track_color = "red"
+
 
 class Main(BoxLayout):
     current_folder = StringProperty(DIR_IMG_FILE)
@@ -113,6 +134,9 @@ class Main(BoxLayout):
     mpeg = ObjectProperty()
     mp4 = ObjectProperty()
 
+    lab_quant_videos = ObjectProperty()
+    lab_message = ObjectProperty()
+    scrll = ObjectProperty()
     process_slider = ObjectProperty()
     butt_save_one = ObjectProperty()
     save_playlist_button = ObjectProperty()
@@ -121,7 +145,6 @@ class Main(BoxLayout):
     carusel = ObjectProperty()
     input_ref = ObjectProperty()
     youtube_title = ObjectProperty()
-    lab_message = ObjectProperty()
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -136,6 +159,14 @@ class Main(BoxLayout):
         self.lab_message.add_line(f"{50 * '*'}")
         self.block_button()
 
+    @mainthread
+    def message_playlist(self,message):
+        match message:
+            case "create list":
+                print("create")
+
+
+
     # @mainthread
     def slider_callback(self, qt):
         if self.MySliderFlag:
@@ -144,15 +175,14 @@ class Main(BoxLayout):
                 self.process_slider.value = 0
         else:
             return False
-    ################################################################################################################
-    ################################################################################################################
-    ################################################################################################################
-    ################################################################################################################
 
+    ################################################################################################################
+    ################################################################################################################
+    ################################################################################################################
+    ################################################################################################################
 
     def thread_create_playlist_YouTube(self, urlvideo, qt):
         thr.Thread(target=self.create_object_playlist_youtube, args=(urlvideo,), daemon=True).start()
-
 
     def create_object_youtube(self, url_video):
         """При вставке ссылки на видео в Textinput- получаем
@@ -172,45 +202,46 @@ class Main(BoxLayout):
                 self.lab_message.add_line(f"[color=#32CD32] Создаю объект Playlist YouTube.[/color]")
                 self.lab_message.add_line(f"[color=#32CD32] Создание плейлиста требует времени.[/color]")
                 self.lab_message.add_line(f"[color=#32CD32] {30 * ' '}Ожидайте[/color]")
+                self.lab_message.add_line(f"{50 * '*'}")
                 Clock.schedule_interval(self.slider_callback, .1)
                 Clock.schedule_once(partial(self.thread_create_playlist_YouTube, url_video), .1)
 
         else:
             self.block_button()
             self.OBJ_YouTube = None
-            self.list_all_urls_videos = [None,]
+            self.list_all_urls_videos = [None, ]
             self.install_image_carousel_by_default()
             self.process_slider.value_track_color = "green"
             self.process_slider.value = 0
-
+            self.lab_quant_videos.text = "0"
 
     @mainthread
     def message_create_playlist(self):
         count_videos_url = len(self.list_all_urls_videos)
         self.lab_message.add_line(f"        Объект Playlist YouTube создан.")
         self.lab_message.add_line(f"[color=#32CD32] Список адресов получен.[/color]")
+        self.lab_quant_videos.text = str(count_videos_url)
         self.lab_message.add_line(
             f"[color=#32CD32] Количество видео в плейлисте:[/color] [color=#DCDCDC][size=20]{count_videos_url}[/size][/color]")
         self.lab_message.add_line(f"{50 * '*'}")
         first_video = self.list_all_urls_videos[0]
         self.create_obj_one_video(first_video)
 
-
+    @mainthread
     def create_object_playlist_youtube(self, url_video):
         try:
             OBJ_YouTube_Playlist = Playlist(url_video, )
             if OBJ_YouTube_Playlist:
                 self.list_all_urls_videos = list(OBJ_YouTube_Playlist.video_urls)  # список URL
                 self.message_create_playlist()
-
         except (KeyError, Exception):
+            self.MySliderFlag = False
             self.lab_message.add_line(
                 f' Ошибка: [color=#FF0000]{url_video}[/color] Не является ссылкой на PlayList YouTube.')
             self.lab_message.add_line('         Объект PlayList YouTube не создан!')
             self.lab_message.add_line(f"[color=#FF0000]{50 * '*'}[/color]")
             self.block_button()
             self.negative_slider()
-
 
     def create_obj_one_video(self, url_video):
         self.lab_message.add_line(f"[color=#32CD32] Создаю объект YouTube[/color]")
@@ -265,10 +296,10 @@ class Main(BoxLayout):
             url_next_video = self.list_all_urls_videos[self.url_index]
             self.create_obj_one_video(url_next_video)
 
-############################################################################################################################
-############################################################################################################################
-############################################################################################################################
-############################################################################################################################
+    ############################################################################################################################
+    ############################################################################################################################
+    ############################################################################################################################
+    ############################################################################################################################
 
     def start_save_one_track(self):
         """ При нажатии кнопки 'Сохранить ролик' """
@@ -288,7 +319,7 @@ class Main(BoxLayout):
         thr.Thread(target=self.download_video_stream, daemon=True).start()
 
     def get_video_stream(self):
-        res_s = ["720p", "480p", "360p", "240p", "144p"] # "1080p"
+        res_s = ["720p", "480p", "360p", "240p", "144p"]  # "1080p"
         for res in res_s:
             video = self.OBJ_YouTube.streams.filter(file_extension='mp4', type="video", res=res)
             if video:
@@ -299,7 +330,6 @@ class Main(BoxLayout):
             else:
                 self.lab_message.add_line(f"[color=#FF0000] Качество видео {res} не найдено.[/color]")
                 continue
-
 
     def download_video_stream(self):
         stream_video = self.get_video_stream()
@@ -324,8 +354,6 @@ class Main(BoxLayout):
             self.lab_message.add_line(f"[color=#32CD32] Начинаю качать аудиопоток [/color]")
             path_audio_file = self.start_save_audiotrack_for_video()
             self.start_combine_two_streams(path_load_video_file, path_audio_file)
-
-
 
     def start_save_audiotrack_for_video(self):
         self.lab_message.add_line(f"[color=#32CD32] Соединение....Создание объекта YouTube[/color]")
@@ -374,7 +402,7 @@ class Main(BoxLayout):
             self.lab_message.add_line(f"[color=#32CD32] {30 * ' '}Ждём![/color]")
             self.lab_message.add_line(f"[color=#32CD32] Сохраняю в:[/color] {directory}")
             self.lab_message.add_line(f"[color=#32CD32] Файл успешно скачан.[/color]")
-            return path_load_audio_file # Возвращает путь для объединения с видео
+            return path_load_audio_file  # Возвращает путь для объединения с видео
 
     def start_combine_two_streams(self, path_video_file, path_audio_file):
         self.lab_message.add_line(f"[color=#32CD32] Начинаю объединять потоки.[/color]")
@@ -397,7 +425,7 @@ class Main(BoxLayout):
             self.lab_message.add_line(f"[color=#FF0000]{50 * '*'}[/color]")
             self.negative_slider()
         else:
-            self.delete_old_files(path_video_file,path_audio_file)
+            self.delete_old_files(path_video_file, path_audio_file)
             self.lab_message.add_line("         Видео готово!")
             self.lab_message.add_line(f"{30 * ' '}Работа завершена.")
             self.lab_message.add_line(f"{50 * '*'}")
@@ -405,8 +433,7 @@ class Main(BoxLayout):
             self.block_button(block=False)
             self.positive_slider()
 
-
-    def delete_old_files(self,path_video_file,path_audio_file):
+    def delete_old_files(self, path_video_file, path_audio_file):
         try:
             os.remove(path_video_file)
             os.remove(path_audio_file)
@@ -416,13 +443,11 @@ class Main(BoxLayout):
         except PermissionError:
             self.lab_message.add_line(f"[color=#FF0000] Ошибка удаления временных файлов. [/color]")
             self.lab_message.add_line(f"[color=#FF0000] В доступе отказано! [/color]")
-################################################################################################
-################################################################################################
-################################################################################################
-################################################################################################
 
-
-
+    ################################################################################################
+    ################################################################################################
+    ################################################################################################
+    ################################################################################################
 
     def start_save_audio_track(self):
         self.lab_message.add_line(f"[color=#32CD32] Соединение....Создание объекта YouTube[/color]")
@@ -548,7 +573,6 @@ class Main(BoxLayout):
             self.block_button(block=False)
             self.positive_slider()
 
-
     def start_convert(self, path_file, format):
         """-y => разрешить перезапись выходного файла без подтверждения»."""
         if format:
@@ -579,7 +603,6 @@ class Main(BoxLayout):
             self.block_button(block=False)
             self.MySliderFlag = False
             self.positive_slider()
-
 
     def is_convert(self):
         self.tuple_checkbox_button = (self.mp3, self.wav, self.aac,
@@ -630,11 +653,11 @@ class Main(BoxLayout):
             self.alac.disabled = act
             self.m4a.disabled = act
 
-##########################################################################################################
-#########################################################################################################
-#########################################################################################################
-#########################################################################################################
-#########################################################################################################
+    ##########################################################################################################
+    #########################################################################################################
+    #########################################################################################################
+    #########################################################################################################
+    #########################################################################################################
 
     def start_save_playlist(self):
         """ При нажатии на кнопку 'Сохранить плейлист' """
@@ -655,11 +678,13 @@ class Main(BoxLayout):
         thr.Thread(target=self.start_save_playlist, daemon=True).start()
 
     def positive_slider(self):
-        self.process_slider.value_track_color = "#228B22" # "green" # "ForestGreen"
+        self.process_slider.value_track_color = "#228B22"  # "green" # "ForestGreen"
         self.process_slider.value = 100
+
     def negative_slider(self):
         self.process_slider.value_track_color = "red"
         self.MySliderFlag = False
+
 
 class MyYouTubeApp(App):
     def build(self):
