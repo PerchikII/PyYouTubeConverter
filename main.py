@@ -2,6 +2,8 @@ import os
 from datetime import datetime
 import threading as thr
 import subprocess
+from threading import Thread
+
 from imageio_ffmpeg import get_ffmpeg_exe
 from imageio_ffmpeg import get_ffmpeg_version
 
@@ -99,7 +101,7 @@ class BoxMessage(BoxLayout):
         self.size_hint_y = None
         self.size_hint_x = 1
         self.bind(minimum_height=self.setter('height'))
-        print(dir(self))
+
 
 
     def add_line(self, message):
@@ -121,6 +123,77 @@ class ReadOnlyTextInput(TextInput):
                 self.text = ""
             if touch.is_double_tap:
                 self.text = ""
+
+
+
+
+
+
+
+
+
+
+
+
+
+class Go_playlist:
+    def __init__(self,gen_urls,box_message):
+        self.gen_urls = gen_urls
+        self.lab_message = box_message
+
+    def start(self):
+        for url in self.gen_urls:
+            OBJ = self.create_obj_YouTube(url)
+            STREAM = self.get_video_stream(OBJ)
+            self.start_download(STREAM)
+
+
+    def start_download(self,stream_video):
+        try:
+            path_load_video_file = stream_video.download(DIR_DOWNLOAD, )
+        except MaxRetriesExceeded as err:
+            self.lab_message.add_line(f"[color=#FF0000] Превышено количество запросов.[/color]")
+            self.lab_message.add_line(f"[color=#FF0000] Ошибка: {err}[/color]")
+            self.lab_message.add_line(f"{30 * ' '}Работа завершена.")
+
+        except Exception as err:
+            self.lab_message.add_line(f"[color=#FF0000] Ошибка скачивания видео: {err}.[/color]")
+            self.lab_message.add_line(f"{30 * ' '}      Работа завершена.")
+
+        else:
+            directory = os.path.split(path_load_video_file)[0]
+            self.lab_message.add_line(f"[color=#32CD32] Сохраняю видео в:[/color] {directory}")
+            self.lab_message.add_line(f"{15 * ' '}Файл успешно скачан.")
+            self.lab_message.add_line(f"{50 * '*'}")
+            self.lab_message.add_line(f"{15 * ' '}Начинаю качать аудиопоток")
+            #path_audio_file = self.start_save_audiotrack_for_video()
+            #self.start_combine_two_streams(path_load_video_file, path_audio_file)
+
+
+    def get_video_stream(self,obj_youtube):
+        res_s = ["720p", "480p", "360p", "240p", "144p"]  # "1080p"
+        for res in res_s:
+            video = obj_youtube.streams.filter(file_extension='mp4', type="video", res=res)
+            if video:
+                self.lab_message.add_line(f"[color=#32CD32] Видео найдено.[/color]")
+                self.lab_message.add_line(f"[color=#32CD32] Качество видео[/color] {res}.")
+                self.lab_message.add_line(f"[color=#32CD32] Начинаю кач видео.[/color].")
+                return video[0]
+            else:
+                self.lab_message.add_line(f"[color=#FF0000] Качество видео {res} не найдено.[/color]")
+                continue
+
+
+    def create_obj_YouTube(self, url_video):
+        self.lab_message.add_line(f"[color=#32CD32] Создаю объект YouTube[/color]")
+        OBJ_YouTube = YouTube(url_video, )
+        return OBJ_YouTube
+
+
+
+
+
+
 
 
 class Main(BoxLayout):
@@ -159,15 +232,7 @@ class Main(BoxLayout):
         self.lab_message.add_line(f"{50 * '*'}")
         self.block_button()
 
-    @mainthread
-    def message_playlist(self,message):
-        match message:
-            case "create list":
-                print("create")
-
-
-
-    # @mainthread
+    
     def slider_callback(self, qt):
         if self.MySliderFlag:
             self.process_slider.value += 1
@@ -325,12 +390,12 @@ class Main(BoxLayout):
             if video:
                 self.lab_message.add_line(f"[color=#32CD32] Видео найдено.[/color]")
                 self.lab_message.add_line(f"[color=#32CD32] Качество видео[/color] {res}.")
-                self.lab_message.add_line(f"[color=#32CD32] Начинаю кач видео.[/color] {res}.")
+                self.lab_message.add_line(f"[color=#32CD32] Начинаю кач видео.[/color].")
                 return video[0]
             else:
                 self.lab_message.add_line(f"[color=#FF0000] Качество видео {res} не найдено.[/color]")
                 continue
-
+    @mainthread
     def download_video_stream(self):
         stream_video = self.get_video_stream()
         try:
@@ -349,61 +414,83 @@ class Main(BoxLayout):
         else:
             directory = os.path.split(path_load_video_file)[0]
             self.lab_message.add_line(f"[color=#32CD32] Сохраняю видео в:[/color] {directory}")
-            self.lab_message.add_line(f"[color=#32CD32] Файл успешно скачан.[/color]")
+            self.lab_message.add_line(f"{15 * ' '}Файл успешно скачан.")
             self.lab_message.add_line(f"{50 * '*'}")
-            self.lab_message.add_line(f"[color=#32CD32] Начинаю качать аудиопоток [/color]")
+            self.lab_message.add_line(f"{15 * ' '}Начинаю качать аудиопоток")
             path_audio_file = self.start_save_audiotrack_for_video()
             self.start_combine_two_streams(path_load_video_file, path_audio_file)
 
     def start_save_audiotrack_for_video(self):
-        self.lab_message.add_line(f"[color=#32CD32] Соединение....Создание объекта YouTube[/color]")
+        self.mess_audiotrack_for_video("Создание объекта")
         try:
             path_load_audio_file = self.OBJ_YouTube.streams.get_default_audio_track().first().download(DIR_DOWNLOAD, )
+            self.mess_audiotrack_for_video("Объект создан")
         except AttributeError:
-            video_url = self.input_ref.text
-            self.lab_message.add_line(f"    [color=#32CD32] Объект не создан.[/color]")
-            self.lab_message.add_line(f'    "{video_url}"- [color=#FF0000]не является ссылкой YouTube.[/color]')
-            self.lab_message.add_line(f'    [color=#FF0000]Сорвалась ссылка[/color]')
-            self.lab_message.add_line(f'    [color=#FF0000]Перезапустите программу[/color]')
-            self.lab_message.add_line(f"[color=#FF0000]{50 * '*'}[/color]")
             self.negative_slider()
             self.block_button(block=False)
             self.install_image_carousel_by_default()
         except AgeRestrictedError:
-            self.lab_message.add_line(
-                f"    Ютубчег выставил этому видео ограничение 18+ [color=#FF0000]Скачать невозможно.[/color] ")
-            self.lab_message.add_line(f"[color=#FF0000]{50 * '*'}[/color]")
+            self.mess_audiotrack_for_video("AgeRestrictedError")
             self.negative_slider()
             self.block_button(block=False)
         except MaxRetriesExceeded:
-            self.lab_message.add_line(
-                f"[color=#FF0000] Превышено максимальное количество повторных попыток соединения[/color]")
-            self.lab_message.add_line(f"[color=#FF0000] Плохое интернет соединение.[/color]")
-            self.lab_message.add_line(f"[color=#FF0000] Ютубчег просто так не отдаст контент на халяву.[/color]")
-            self.lab_message.add_line(f"[color=#FF0000] Попробуйте позже.[/color]")
-            self.lab_message.add_line(f"[color=#FF0000]{50 * '*'}[/color]")
+            self.mess_audiotrack_for_video("MaxRetriesExceeded")
             self.negative_slider()
             self.block_button(block=False)
         except VideoUnavailable:
-            self.lab_message.add_line(f"[color=#FF0000] Видео не доступно для скачивания[/color]")
-            self.lab_message.add_line(f"[color=#FF0000]{50 * '*'}[/color]")
+            self.mess_audiotrack_for_video("VideoUnavailable")
             self.negative_slider()
             self.block_button(block=False)
         except Exception as err:
-            self.lab_message.add_line(f"[color=#FF0000] {err}[/color]")
-            self.lab_message.add_line(f"[color=#FF0000] Попробуйте позже.[/color]")
-            self.lab_message.add_line(f"[color=#FF0000]{50 * '*'}[/color]")
+            self.err = err
+            self.mess_audiotrack_for_video("Exception")
             self.negative_slider()
             self.block_button(block=False)
         else:
-            directory = os.path.split(path_load_audio_file)[0]
-            self.lab_message.add_line(f"[color=#32CD32] Объект YouTube создан.[/color]")
-            self.lab_message.add_line(f"[color=#32CD32] Качаю аудиопоток.[/color]")
-            self.lab_message.add_line(f"[color=#32CD32] {30 * ' '}Ждём![/color]")
-            self.lab_message.add_line(f"[color=#32CD32] Сохраняю в:[/color] {directory}")
-            self.lab_message.add_line(f"[color=#32CD32] Файл успешно скачан.[/color]")
+            self.directory = os.path.split(path_load_audio_file)[0]
+            self.mess_audiotrack_for_video("save")
             return path_load_audio_file  # Возвращает путь для объединения с видео
 
+    @mainthread
+    def mess_audiotrack_for_video(self, message):
+        match message:
+            case "Создание объекта":
+                self.lab_message.add_line(f"[color=#32CD32] Соединение....Создание объекта[/color] [color=#FAEBD7]YouTube[/color]")
+            case "Объект создан":
+                self.lab_message.add_line(f"[color=#32CD32] Объект[/color] [color=#FAEBD7]YouTube[/color] [color=#32CD32]создан.[/color]")
+                self.lab_message.add_line(f"[color=#32CD32] Качаю аудиопоток.[/color]")
+                self.lab_message.add_line(f"[color=#32CD32] {30 * ' '}Ждём![/color]")
+            case "save":
+                self.lab_message.add_line(f"[color=#32CD32] {15 * ' '}Файл успешно скачан.[/color]")
+                self.lab_message.add_line(f"[color=#32CD32] Сохраняю в:[/color] {self.directory}")
+            case "AgeRestrictedError":
+                self.lab_message.add_line(
+                    f"    Ютубчег выставил этому видео ограничение 18+ [color=#FF0000]Скачать невозможно.[/color] ")
+                self.lab_message.add_line(f"[color=#FF0000]{50 * '*'}[/color]")
+            case "AttributeError":
+                video_url = self.input_ref.text
+                self.lab_message.add_line(f"    [color=#32CD32] Объект не создан.[/color]")
+                self.lab_message.add_line(f'    "{video_url}"- [color=#FF0000]не является ссылкой YouTube.[/color]')
+                self.lab_message.add_line(f'    [color=#FF0000]Сорвалась ссылка[/color]')
+                self.lab_message.add_line(f'    [color=#FF0000]Перезапустите программу[/color]')
+                self.lab_message.add_line(f"[color=#FF0000]{50 * '*'}[/color]")
+            case "MaxRetriesExceeded":
+                self.lab_message.add_line(
+                    f"[color=#FF0000] Превышено максимальное количество повторных попыток соединения[/color]")
+                self.lab_message.add_line(f"[color=#FF0000] Плохое интернет соединение.[/color]")
+                self.lab_message.add_line(f"[color=#FF0000] Ютубчег просто так не отдаст контент на халяву.[/color]")
+                self.lab_message.add_line(f"[color=#FF0000] Попробуйте позже.[/color]")
+                self.lab_message.add_line(f"[color=#FF0000]{50 * '*'}[/color]")
+            case "VideoUnavailable":
+                self.lab_message.add_line(f"[color=#FF0000] Видео не доступно для скачивания[/color]")
+                self.lab_message.add_line(f"[color=#FF0000]{50 * '*'}[/color]")
+            case "Exception":
+                self.lab_message.add_line(f"[color=#FF0000] {self.err}[/color]")
+                self.lab_message.add_line(f"[color=#FF0000] Попробуйте позже.[/color]")
+                self.lab_message.add_line(f"[color=#FF0000]{50 * '*'}[/color]")
+
+
+    @mainthread
     def start_combine_two_streams(self, path_video_file, path_audio_file):
         self.lab_message.add_line(f"[color=#32CD32] Начинаю объединять потоки.[/color]")
         directory, file = os.path.split(path_video_file)
@@ -448,7 +535,7 @@ class Main(BoxLayout):
     ################################################################################################
     ################################################################################################
     ################################################################################################
-
+    @mainthread
     def start_save_audio_track(self):
         self.lab_message.add_line(f"[color=#32CD32] Соединение....Создание объекта YouTube[/color]")
         try:
