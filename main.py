@@ -1,15 +1,14 @@
-from download_tracks import Go_audio_playlist
+from download_tracks import Go_audio_downloanding
 
 import os
 from datetime import datetime
 import threading as thr
 import subprocess
-from threading import Thread
 
 from imageio_ffmpeg import get_ffmpeg_exe
 from imageio_ffmpeg import get_ffmpeg_version
 
-from time import sleep
+
 
 from functools import partial
 
@@ -57,13 +56,6 @@ if not os.path.exists(os.path.join(current_download_path, "Download")):
     os.mkdir(os.path.join(current_download_path, "Download"))
 DIR_DOWNLOAD = os.path.join(current_download_path, "Download")
 
-# def is_ffmpeg():
-#     try:
-#         result = subprocess.run(["ffmpeg", "-version"], capture_output=True, text=True)
-#         return result.stdout[:31]  # version ffmpeg
-#     except FileNotFoundError:
-#         return False
-
 FFMPEG_LIB_VERSION = get_ffmpeg_version()
 FFMPEG_LIB_EXE = get_ffmpeg_exe()
 
@@ -77,11 +69,13 @@ class MySlider(Slider):
 class MyCarousel(Carousel):
     pass
 
+
 class MyScroll(ScrollView):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.bar_width = 10
         self.do_scroll_x = False
+
 
 class LabelMessage(Label):
     def __init__(self, **kwargs):
@@ -95,7 +89,6 @@ class LabelMessage(Label):
         self.text_size = (Window.width - dp(20), None)
 
 
-
 class BoxMessage(BoxLayout):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -103,8 +96,6 @@ class BoxMessage(BoxLayout):
         self.size_hint_y = None
         self.size_hint_x = 1
         self.bind(minimum_height=self.setter('height'))
-
-
 
     def add_line(self, message):
         """Вставляет время и сообщение в Label.
@@ -125,17 +116,6 @@ class ReadOnlyTextInput(TextInput):
                 self.text = ""
             if touch.is_double_tap:
                 self.text = ""
-
-
-
-
-
-
-
-
-
-
-
 
 
 class Main(BoxLayout):
@@ -166,17 +146,20 @@ class Main(BoxLayout):
         self.MySliderFlag = True
         self.OBJ_YouTube = None
         self.OBJ_img_thumb = None
-        self.tuple_checkbox_button = (self.mp3, self.wav, self.aac,
-                                      self.alac, self.m4a, self.avi,
-                                      self.mpeg, self.mp4,)
+        self.buttons_navigation = (self.butt_save_one,self.save_playlist_button,
+                                    self.next_button,self.prev_button)
+        self.tuple_checkbox_buttons = (self.mp3, self.wav, self.aac,
+                                       self.alac, self.m4a, self.avi,
+                                       self.mpeg, self.mp4,)
         self.url_index = 0
-        self.gen_all_urls_videos = [None]
+        self.gen_all_urls_videos = [None, ]
+        self.one_urls_video = [None, ]
         self.lab_message.add_line(f"        [color=#32CD32]{FFMPEG_LIB_VERSION}[/color]")
         self.lab_message.add_line(f"[color=#32CD32]{30 * ' '}Запуск программы.[/color]")
         self.lab_message.add_line(f"{50 * '*'}")
         self.block_button()
 
-    
+    ################################################################################################################
     def slider_callback(self, qt):
         if self.MySliderFlag:
             self.process_slider.value += 1
@@ -196,7 +179,6 @@ class Main(BoxLayout):
     def create_object_youtube(self, url_video):
         """При вставке ссылки на видео в Textinput- получаем
         объект YouTube и уст-ка картинки и названия видео"""
-        self.MySliderFlag = True
         if url_video:
             try:
                 self.create_obj_one_video(url_video)
@@ -223,6 +205,7 @@ class Main(BoxLayout):
             self.process_slider.value_track_color = "green"
             self.process_slider.value = 0
             self.lab_quant_videos.text = "0"
+
 
     @mainthread
     def message_create_playlist(self):
@@ -255,7 +238,7 @@ class Main(BoxLayout):
     def create_obj_one_video(self, url_video):
         self.lab_message.add_line(f"[color=#32CD32] Создаю объект YouTube[/color]")
         self.OBJ_YouTube = YouTube(url_video, )
-        self.gen_all_urls_videos = [url_video,]
+        self.one_urls_video = [url_video, ]
         self.install_data_this_video()
 
     def install_data_this_video(self, ):
@@ -271,7 +254,7 @@ class Main(BoxLayout):
             self.carusel.add_widget(img)
             self.positive_slider()
             self.block_button(block=False)
-            self.MySliderFlag = False
+            self.MySliderFlag = False # Останавливает движение Slider
 
         except Exception as err:
             self.lab_message.add_line(f"[color=#FF0000] Ошибка получения заголовка[/color]")
@@ -312,16 +295,19 @@ class Main(BoxLayout):
     def start_save_one_track(self):
         """ При нажатии кнопки 'Сохранить ролик' """
         self.MySliderFlag = True
-        self.block_button()
-        Clock.schedule_interval(self.slider_callback, .1)
         if self.mp4.active:  # Если нажата радиокнопка скачивания видео
             self.lab_message.add_line(f"[color=#32CD32] Ищу видео.[/color]")
             self.thread_download_video()
         else:
-            self.thread_save_one_audio_track()
+            thr.Thread(target=self.start_download_one_track, daemon=True).start()
 
-    def thread_save_one_audio_track(self):
-        thr.Thread(target=self.start_save_audio_track, daemon=True).start()
+    def start_download_one_track(self):
+        Go_audio_downloanding(DIR_DOWNLOAD, self.one_urls_video,
+                              self.lab_message,
+                              self.tuple_checkbox_buttons,
+                              self.buttons_navigation,
+                              self.process_slider,
+                              ).start()
 
     def thread_download_video(self):
         thr.Thread(target=self.download_video_stream, daemon=True).start()
@@ -338,6 +324,7 @@ class Main(BoxLayout):
             else:
                 self.lab_message.add_line(f"[color=#FF0000] Качество видео {res} не найдено.[/color]")
                 continue
+
     @mainthread
     def download_video_stream(self):
         stream_video = self.get_video_stream()
@@ -398,9 +385,11 @@ class Main(BoxLayout):
     def mess_audiotrack_for_video(self, message):
         match message:
             case "Создание объекта":
-                self.lab_message.add_line(f"[color=#32CD32] Соединение....Создание объекта[/color] [color=#FAEBD7]YouTube[/color]")
+                self.lab_message.add_line(
+                    f"[color=#32CD32] Соединение....Создание объекта[/color] [color=#FAEBD7]YouTube[/color]")
             case "Объект создан":
-                self.lab_message.add_line(f"[color=#32CD32] Объект[/color] [color=#FAEBD7]YouTube[/color] [color=#32CD32]создан.[/color]")
+                self.lab_message.add_line(
+                    f"[color=#32CD32] Объект[/color] [color=#FAEBD7]YouTube[/color] [color=#32CD32]создан.[/color]")
                 self.lab_message.add_line(f"[color=#32CD32] Качаю аудиопоток.[/color]")
                 self.lab_message.add_line(f"[color=#32CD32] {30 * ' '}Ждём![/color]")
             case "save":
@@ -431,7 +420,6 @@ class Main(BoxLayout):
                 self.lab_message.add_line(f"[color=#FF0000] {self.err}[/color]")
                 self.lab_message.add_line(f"[color=#FF0000] Попробуйте позже.[/color]")
                 self.lab_message.add_line(f"[color=#FF0000]{50 * '*'}[/color]")
-
 
     @mainthread
     def start_combine_two_streams(self, path_video_file, path_audio_file):
@@ -474,7 +462,6 @@ class Main(BoxLayout):
             self.lab_message.add_line(f"[color=#FF0000] Ошибка удаления временных файлов. [/color]")
             self.lab_message.add_line(f"[color=#FF0000] В доступе отказано! [/color]")
 
-
     def delete_old_audio_files(self, path_audio_file):
         self.lab_message.add_line(f"[color=#32CD32] Удаляю временные файлы. [/color]")
         try:
@@ -488,6 +475,7 @@ class Main(BoxLayout):
         else:
             self.lab_message.add_line(f"[color=#32CD32]{25 * ' '} Успешно!. [/color]")
             self.lab_message.add_line(f"{50 * '*'}")
+
     ################################################################################################
     ################################################################################################
     ################################################################################################
@@ -651,15 +639,14 @@ class Main(BoxLayout):
             self.positive_slider()
 
     def is_convert(self):
-        self.tuple_checkbox_button = (self.mp3, self.wav, self.aac,
-                                      self.alac, self.m4a, self.avi,
-                                      self.mpeg, self.mp4,)
-        for butt in self.tuple_checkbox_button:
+        self.tuple_checkbox_buttons = (self.mp3, self.wav, self.aac,
+                                       self.alac, self.m4a, self.avi,
+                                       self.mpeg, self.mp4,)
+        for butt in self.tuple_checkbox_buttons:
             if butt.state == "down":
                 return butt.uid
 
     def block_button(self, block=True):
-        print(self.mp4.state)
         if self.mp4.state == "down":
             self.save_playlist_button.disabled = True
         else:
@@ -684,9 +671,6 @@ class Main(BoxLayout):
         self.block_button(block=False)
         self.MySliderFlag = False
         self.positive_slider()
-
-
-
 
     def turnoff_radiobutton(self, act):
         if act:
@@ -713,23 +697,22 @@ class Main(BoxLayout):
     #########################################################################################################
     #########################################################################################################
     #########################################################################################################
+    @mainthread
+    def message_playlist(self):
+        self.lab_message.add_line(f"[color=#DCDCDC]Чем больше количество видео, тем длительнее работа.[/color]")
+        self.lab_message.add_line(f"[color=#32CD32]{30 * ' '}Ожидайте.[/color]")
 
     def start_save_playlist(self):
         """ При нажатии на кнопку 'Сохранить плейлист' """
-        # self.lab_message.add_line(f"[color=#DCDCDC]Чем больше количество видео, тем длительнее работа.[/color]")
-        # self.lab_message.add_line(f"[color=#32CD32]{30 * ' '}Ожидайте.[/color]")
-        Go_audio_playlist(DIR_DOWNLOAD,self.gen_all_urls_videos,self.lab_message,self.tuple_checkbox_button).start()
-        track = 1
+        self.message_playlist()
+        Go_audio_downloanding(DIR_DOWNLOAD,
+                              self.gen_all_urls_videos,
+                              self.lab_message,
+                              self.tuple_checkbox_buttons,
+                              self.buttons_navigation,
+                              self.process_slider,
+                              ).start()
 
-        # for url_video in self.list_all_urls_videos:
-        #     self.lab_message.add_line(f"[color=#32CD32]Качаем: {track}/{len(self.list_all_urls_videos)}.[/color]")
-        #     print(f"[color=#32CD32]Качаем: {track}/{len(self.list_all_urls_videos)}.[/color]")
-        #     self.create_obj_one_video(url_video)
-        #     self.start_save_one_track()
-        #     sleep(2)
-        #     track += 1
-        # else:
-        #     self.block_button(block=False)
 
     def thread_save_playlist_button(self):
         thr.Thread(target=self.start_save_playlist, daemon=True).start()
@@ -760,58 +743,6 @@ MyYouTubeApp().run()
 #         '-y',  # перезаписать выходной файл без подтверждения
 #         video_path, ]
 
-# URL_VIDEO_RUS = "https://www.youtube.com/watch?v=hYP_1jeT4H4"
-# URL_VIDEO_ENG = "https://www.youtube.com/watch?v=D4P9t9_RjUQ"
-# out_path = r"F:\TEST"
-#
-# def main(url_video):
-#     yt = YouTube(url_video,)
-#     print(yt.title)
-#     # Доступные потоки
-#     # for audio_stream in yt.streams.filter(file_extension='mp4',abr="48kbps",):
-#     #         print(audio_stream)
-#
-#
-#     load_audio = yt.streams.get_audio_only().download(out_path,)
-# direct,_ = os.path.split(test_audio)
-# file_dir = os.path.join(direct,"test_file.mp4")
-
-
-# if __name__ == '__main__':
-#     main(URL_VIDEO_RUS)
-
-# ffmpeg.input(file_path).output(os.path.join(path_files2,f'{lessen}.mp3'),codec='mp3',bitrate='64k').run()
-
-
-# out_path = r"F:\TEST"
-# URL = "https://www.youtube.com/watch?v=hYP_1jeT4H4"
-
-
-# def convert_in_mp3(self, file_path):
-#     direct, file = os.path.split(file_path)
-#     self.mp3_file_dir = os.path.join(direct, f'{file}.mp3')
-#     ffmpeg.input(file_path).output(self.mp3_file_dir, codec='mp3', bitrate='64k').run()
-#     self.ids.info_load.text = "Загрузка окончена"
-#
-#
-# def load_file(self):
-#     self.ids.info_load.text = "Начата загрузка"
-#     self.url_video = self.ids.text_inpt.text
-#     try:
-#         yt = YouTube(self.url_video, )
-#     except Exception as err:
-#         print(err)
-#     else:
-#         self.ids.info.text = yt.title
-#         self.path_load_audio = yt.streams.get_audio_only().download(out_path, )
-#         self.convert_in_mp3(self.path_load_audio)
-#
-#
-# def on_size(self, a, b):
-#     print(Window.height)
-#     print(Window.width)
-#
-#
 # def play_file(self):
 #     self.sound = SoundLoader.load(self.mp3_file_dir)  # self.load_audio)
 #     self.sound.play()
