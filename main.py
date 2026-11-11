@@ -1,3 +1,5 @@
+from download_tracks import Go_audio_playlist
+
 import os
 from datetime import datetime
 import threading as thr
@@ -136,66 +138,6 @@ class ReadOnlyTextInput(TextInput):
 
 
 
-class Go_playlist:
-    def __init__(self,gen_urls,box_message):
-        self.gen_urls = gen_urls
-        self.lab_message = box_message
-
-    def start(self):
-        for url in self.gen_urls:
-            OBJ = self.create_obj_YouTube(url)
-            STREAM = self.get_video_stream(OBJ)
-            self.start_download(STREAM)
-
-
-    def start_download(self,stream_video):
-        try:
-            path_load_video_file = stream_video.download(DIR_DOWNLOAD, )
-        except MaxRetriesExceeded as err:
-            self.lab_message.add_line(f"[color=#FF0000] Превышено количество запросов.[/color]")
-            self.lab_message.add_line(f"[color=#FF0000] Ошибка: {err}[/color]")
-            self.lab_message.add_line(f"{30 * ' '}Работа завершена.")
-
-        except Exception as err:
-            self.lab_message.add_line(f"[color=#FF0000] Ошибка скачивания видео: {err}.[/color]")
-            self.lab_message.add_line(f"{30 * ' '}      Работа завершена.")
-
-        else:
-            directory = os.path.split(path_load_video_file)[0]
-            self.lab_message.add_line(f"[color=#32CD32] Сохраняю видео в:[/color] {directory}")
-            self.lab_message.add_line(f"{15 * ' '}Файл успешно скачан.")
-            self.lab_message.add_line(f"{50 * '*'}")
-            self.lab_message.add_line(f"{15 * ' '}Начинаю качать аудиопоток")
-            #path_audio_file = self.start_save_audiotrack_for_video()
-            #self.start_combine_two_streams(path_load_video_file, path_audio_file)
-
-
-    def get_video_stream(self,obj_youtube):
-        res_s = ["720p", "480p", "360p", "240p", "144p"]  # "1080p"
-        for res in res_s:
-            video = obj_youtube.streams.filter(file_extension='mp4', type="video", res=res)
-            if video:
-                self.lab_message.add_line(f"[color=#32CD32] Видео найдено.[/color]")
-                self.lab_message.add_line(f"[color=#32CD32] Качество видео[/color] {res}.")
-                self.lab_message.add_line(f"[color=#32CD32] Начинаю кач видео.[/color].")
-                return video[0]
-            else:
-                self.lab_message.add_line(f"[color=#FF0000] Качество видео {res} не найдено.[/color]")
-                continue
-
-
-    def create_obj_YouTube(self, url_video):
-        self.lab_message.add_line(f"[color=#32CD32] Создаю объект YouTube[/color]")
-        OBJ_YouTube = YouTube(url_video, )
-        return OBJ_YouTube
-
-
-
-
-
-
-
-
 class Main(BoxLayout):
     current_folder = StringProperty(DIR_IMG_FILE)
     mp3 = ObjectProperty()
@@ -224,9 +166,11 @@ class Main(BoxLayout):
         self.MySliderFlag = True
         self.OBJ_YouTube = None
         self.OBJ_img_thumb = None
-        self.tuple_checkbox_button = None
+        self.tuple_checkbox_button = (self.mp3, self.wav, self.aac,
+                                      self.alac, self.m4a, self.avi,
+                                      self.mpeg, self.mp4,)
         self.url_index = 0
-        self.list_all_urls_videos = [None]
+        self.gen_all_urls_videos = [None]
         self.lab_message.add_line(f"        [color=#32CD32]{FFMPEG_LIB_VERSION}[/color]")
         self.lab_message.add_line(f"[color=#32CD32]{30 * ' '}Запуск программы.[/color]")
         self.lab_message.add_line(f"{50 * '*'}")
@@ -256,7 +200,7 @@ class Main(BoxLayout):
         if url_video:
             try:
                 self.create_obj_one_video(url_video)
-                self.list_all_urls_videos[0] = url_video
+                self.gen_all_urls_videos[0] = url_video
                 self.block_button(block=False)
                 self.MySliderFlag = False
                 self.positive_slider()
@@ -274,7 +218,7 @@ class Main(BoxLayout):
         else:
             self.block_button()
             self.OBJ_YouTube = None
-            self.list_all_urls_videos = [None, ]
+            self.gen_all_urls_videos = [None, ]
             self.install_image_carousel_by_default()
             self.process_slider.value_track_color = "green"
             self.process_slider.value = 0
@@ -282,14 +226,14 @@ class Main(BoxLayout):
 
     @mainthread
     def message_create_playlist(self):
-        count_videos_url = len(self.list_all_urls_videos)
+        count_videos_url = len(self.gen_all_urls_videos)
         self.lab_message.add_line(f"        Объект Playlist YouTube создан.")
         self.lab_message.add_line(f"[color=#32CD32] Список адресов получен.[/color]")
         self.lab_quant_videos.text = str(count_videos_url)
         self.lab_message.add_line(
             f"[color=#32CD32] Количество видео в плейлисте:[/color] [color=#DCDCDC][size=20]{count_videos_url}[/size][/color]")
         self.lab_message.add_line(f"{50 * '*'}")
-        first_video = self.list_all_urls_videos[0]
+        first_video = self.gen_all_urls_videos[0]
         self.create_obj_one_video(first_video)
 
     @mainthread
@@ -297,7 +241,7 @@ class Main(BoxLayout):
         try:
             OBJ_YouTube_Playlist = Playlist(url_video, )
             if OBJ_YouTube_Playlist:
-                self.list_all_urls_videos = list(OBJ_YouTube_Playlist.video_urls)  # список URL
+                self.gen_all_urls_videos = OBJ_YouTube_Playlist.video_urls  # список URL
                 self.message_create_playlist()
         except (KeyError, Exception):
             self.MySliderFlag = False
@@ -311,6 +255,7 @@ class Main(BoxLayout):
     def create_obj_one_video(self, url_video):
         self.lab_message.add_line(f"[color=#32CD32] Создаю объект YouTube[/color]")
         self.OBJ_YouTube = YouTube(url_video, )
+        self.gen_all_urls_videos = [url_video,]
         self.install_data_this_video()
 
     def install_data_this_video(self, ):
@@ -342,23 +287,21 @@ class Main(BoxLayout):
     def previous_video(self):
         self.url_index -= 1
         try:
-            url_previous_video = self.list_all_urls_videos[self.url_index]
+            url_previous_video = self.gen_all_urls_videos[self.url_index]
             self.create_obj_one_video(url_previous_video)
-            print(self.url_index)
         except IndexError:
             self.url_index = 0
-            url_previous_video = self.list_all_urls_videos[self.url_index]
+            url_previous_video = self.gen_all_urls_videos[self.url_index]
             self.create_obj_one_video(url_previous_video)
 
     def next_video(self):
         self.url_index += 1
         try:
-            url_next_video = self.list_all_urls_videos[self.url_index]
+            url_next_video = self.gen_all_urls_videos[self.url_index]
             self.create_obj_one_video(url_next_video)
-            print(self.url_index)
         except IndexError:
             self.url_index = 0
-            url_next_video = self.list_all_urls_videos[self.url_index]
+            url_next_video = self.gen_all_urls_videos[self.url_index]
             self.create_obj_one_video(url_next_video)
 
     ############################################################################################################################
@@ -512,7 +455,7 @@ class Main(BoxLayout):
             self.lab_message.add_line(f"[color=#FF0000]{50 * '*'}[/color]")
             self.negative_slider()
         else:
-            self.delete_old_files(path_video_file, path_audio_file)
+            self.delete_old_video_files(path_video_file, path_audio_file)
             self.lab_message.add_line("         Видео готово!")
             self.lab_message.add_line(f"{30 * ' '}Работа завершена.")
             self.lab_message.add_line(f"{50 * '*'}")
@@ -520,7 +463,7 @@ class Main(BoxLayout):
             self.block_button(block=False)
             self.positive_slider()
 
-    def delete_old_files(self, path_video_file, path_audio_file):
+    def delete_old_video_files(self, path_video_file, path_audio_file):
         try:
             os.remove(path_video_file)
             os.remove(path_audio_file)
@@ -531,6 +474,20 @@ class Main(BoxLayout):
             self.lab_message.add_line(f"[color=#FF0000] Ошибка удаления временных файлов. [/color]")
             self.lab_message.add_line(f"[color=#FF0000] В доступе отказано! [/color]")
 
+
+    def delete_old_audio_files(self, path_audio_file):
+        self.lab_message.add_line(f"[color=#32CD32] Удаляю временные файлы. [/color]")
+        try:
+            os.remove(path_audio_file)
+        except FileNotFoundError:
+            self.lab_message.add_line(f"[color=#FF0000] Ошибка удаления временных файлов. [/color]")
+            self.lab_message.add_line(f"[color=#FF0000] Файлы не найдены! [/color]")
+        except PermissionError:
+            self.lab_message.add_line(f"[color=#FF0000] Ошибка удаления временных файлов. [/color]")
+            self.lab_message.add_line(f"[color=#FF0000] В доступе отказано! [/color]")
+        else:
+            self.lab_message.add_line(f"[color=#32CD32]{25 * ' '} Успешно!. [/color]")
+            self.lab_message.add_line(f"{50 * '*'}")
     ################################################################################################
     ################################################################################################
     ################################################################################################
@@ -654,6 +611,7 @@ class Main(BoxLayout):
             self.block_button(block=False)
             self.negative_slider()
         else:
+            self.delete_old_audio_files(path_file)
             self.lab_message.add_line("         Конвертация завершена")
             self.lab_message.add_line(f"{30 * ' '}Работа завершена.")
             self.lab_message.add_line(f"{50 * '*'}")
@@ -678,6 +636,7 @@ class Main(BoxLayout):
                 self.block_button(block=False)
                 self.negative_slider()
             else:
+                self.delete_old_audio_files(path_file)
                 self.lab_message.add_line("         Конвертация завершена")
                 self.lab_message.add_line(f"{30 * ' '}Работа завершена.")
                 self.lab_message.add_line(f"{50 * '*'}")
@@ -700,7 +659,11 @@ class Main(BoxLayout):
                 return butt.uid
 
     def block_button(self, block=True):
-        self.save_playlist_button.disabled = block
+        print(self.mp4.state)
+        if self.mp4.state == "down":
+            self.save_playlist_button.disabled = True
+        else:
+            self.save_playlist_button.disabled = block
         self.next_button.disabled = block
         self.prev_button.disabled = block
         self.butt_save_one.disabled = block
@@ -722,6 +685,9 @@ class Main(BoxLayout):
         self.MySliderFlag = False
         self.positive_slider()
 
+
+
+
     def turnoff_radiobutton(self, act):
         if act:
             self.aac.disabled = act
@@ -731,6 +697,7 @@ class Main(BoxLayout):
             self.m4a.state = "down"
             self.avi.disabled = act
             self.mpeg.disabled = act
+            self.save_playlist_button.disabled = act
 
         else:
             self.mp3.disabled = act
@@ -739,6 +706,7 @@ class Main(BoxLayout):
             self.aac.disabled = act
             self.alac.disabled = act
             self.m4a.disabled = act
+            self.save_playlist_button.disabled = act
 
     ##########################################################################################################
     #########################################################################################################
@@ -748,18 +716,20 @@ class Main(BoxLayout):
 
     def start_save_playlist(self):
         """ При нажатии на кнопку 'Сохранить плейлист' """
-        self.lab_message.add_line(f"[color=#DCDCDC]Чем больше количество видео, тем длительнее работа.[/color]")
-        self.lab_message.add_line(f"[color=#32CD32]{30 * ' '}Ожидайте.[/color]")
+        # self.lab_message.add_line(f"[color=#DCDCDC]Чем больше количество видео, тем длительнее работа.[/color]")
+        # self.lab_message.add_line(f"[color=#32CD32]{30 * ' '}Ожидайте.[/color]")
+        Go_audio_playlist(DIR_DOWNLOAD,self.gen_all_urls_videos,self.lab_message,self.tuple_checkbox_button).start()
         track = 1
-        for url_video in self.list_all_urls_videos:
-            self.lab_message.add_line(f"[color=#32CD32]Качаем: {track}/{len(self.list_all_urls_videos)}.[/color]")
-            print(f"[color=#32CD32]Качаем: {track}/{len(self.list_all_urls_videos)}.[/color]")
-            self.create_obj_one_video(url_video)
-            self.start_save_one_track()
-            sleep(2)
-            track += 1
-        else:
-            self.block_button(block=False)
+
+        # for url_video in self.list_all_urls_videos:
+        #     self.lab_message.add_line(f"[color=#32CD32]Качаем: {track}/{len(self.list_all_urls_videos)}.[/color]")
+        #     print(f"[color=#32CD32]Качаем: {track}/{len(self.list_all_urls_videos)}.[/color]")
+        #     self.create_obj_one_video(url_video)
+        #     self.start_save_one_track()
+        #     sleep(2)
+        #     track += 1
+        # else:
+        #     self.block_button(block=False)
 
     def thread_save_playlist_button(self):
         thr.Thread(target=self.start_save_playlist, daemon=True).start()
