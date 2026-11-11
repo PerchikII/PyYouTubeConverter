@@ -8,8 +8,6 @@ import subprocess
 from imageio_ffmpeg import get_ffmpeg_exe
 from imageio_ffmpeg import get_ffmpeg_version
 
-
-
 from functools import partial
 
 # https://youtu.be/_WLdLUlBGOo
