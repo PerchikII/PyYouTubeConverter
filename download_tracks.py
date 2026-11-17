@@ -1,6 +1,7 @@
 import os
 import subprocess
 from time import sleep
+import threading
 
 from kivy.clock import mainthread
 from kivy.clock import Clock
@@ -19,45 +20,82 @@ from pytubefix import YouTube, Playlist
 FFMPEG_LIB_VERSION = get_ffmpeg_version()
 FFMPEG_LIB_EXE = get_ffmpeg_exe()
 
-class Go_audio_downloanding:
-    def __init__(self, directory, list_urls,
+class Go_downloanding:
+    def __init__(self, directory, list_objs,
                  box_message, check_buttons:tuple,
                  buttons_navigation,
                  slider, ):
+
         self.MySliderFlag = True
         self.process_slider = slider
         (self.butt_save_one,self.save_playlist_button,
          self.next_button,self.prev_button) = buttons_navigation
         (self.mp3, self.wav, self.aac, self.alac,
          self.m4a, self.avi, self.mpeg, self.mp4) = check_buttons
-        self.gen_urls = list_urls
+        self.list_objects = list_objs
         self.lab_message = box_message
         self.DIR_DOWNLOAD = directory
 
-    def start(self):
+    def start(self,video):
         self.block_button()
         self.MySliderFlag = True
         Clock.schedule_interval(self.slider_callback, .1)
-        for url in self.gen_urls:
-            OBJ = self.create_obj_YouTube(url)
-            STREAM = self.get_audio_stream(OBJ)
-            self.start_download(STREAM)
+        if video:
+            self.download_video()
+        else:
+            self.download_sound()
+
+
+    def download_video(self):
+        for obj in self.list_objects:
+            audio_stream = self.get_audio_stream(obj)
+            threading.Thread(target=self.start_download,args=(audio_stream,)).start()
             sleep(5)
-            print("**********  sleep 5   *************")
+            video_stream =
+            threading.Thread(target=self.start_download, args=(audio_stream,)).start()
 
-    def create_obj_YouTube(self, url_video):
-        print("create_obj_YouTube")
-        OBJ_YouTube = YouTube(url_video, )
-        return OBJ_YouTube
 
-    def get_audio_stream(self,OBJ_YouTube):
-        return OBJ_YouTube.streams.get_default_audio_track().first()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    def download_sound(self):
+        for obj in self.list_objects:
+            audio_stream = self.get_audio_stream(obj)
+            threading.Thread(target=self.start_download,args=(audio_stream,)).start()
+            sleep(5)
 
     @mainthread
-    def start_download(self,STREAM):
-        self.lab_message.add_line(f"[color=#32CD32] Создаю объект YouTube[/color]")
+    def message_downloanding_audiostream(self, start=True):
+        if start:
+            self.lab_message.add_line(f"    [color=#32CD32] Качаю аудиопоток.[/color]")
+        else:
+            self.lab_message.add_line(f"    [color=#32CD32] Аудиопоток готов.[/color]")
+
+    def get_audio_stream(self, objYT):
+        self.message_downloanding_audiostream()
+        audio_stream = objYT.streams.get_default_audio_track().first()
+        self.message_downloanding_audiostream(start=False)
+        return audio_stream
+
+    @mainthread
+    def start_download(self, Audio_STREAM):
+        self.lab_message.add_line(f"[color=#32CD32] Запускаю поток дикого кача.[/color]")
         try:
-            path_load_audio_file = STREAM.download(self.DIR_DOWNLOAD, )
+            path_load_audio_file = Audio_STREAM.download(self.DIR_DOWNLOAD, )
         except AttributeError:
             self.lab_message.add_line(f"    [color=#32CD32] Объект не создан.[/color]")
             self.lab_message.add_line(f'    Не является ссылкой YouTube.')
@@ -144,13 +182,13 @@ class Go_audio_downloanding:
                 if self.is_a_file(path_file, ".m4a"):
                     self.text_file_exist(path_file)
 
-    @mainthread
+
     def text_file_exist(self,path_file):
         self.lab_message.add_line(f"[color=#32CD32] {15*' '}Файл уже существует.[/color]")
         self.lab_message.add_line(f"{15 * ' '}Аудиофайл в конвертации не нуждается")
         self.lab_message.add_line(f"{30 * ' '}Работа завершена.")
         self.lab_message.add_line(f"{50 * '*'}")
-        self.delete_old_files(path_file)
+        # self.delete_old_files(path_file)
         self.block_button(False)
         self.MySliderFlag = False
         self.positive_slider()
@@ -175,6 +213,7 @@ class Go_audio_downloanding:
             self.block_button()
             self.delete_old_files(path_file)
         else:
+            self.delete_old_files(path_file)
             self.lab_message.add_line("         Конвертация завершена")
             self.lab_message.add_line(f"{30 * ' '}Работа завершена.")
             self.lab_message.add_line(f"{50 * '*'}")
@@ -241,7 +280,6 @@ class Go_audio_downloanding:
             self.lab_message.add_line(f"{50 * '*'}")
 
     def block_button(self, block=True):
-        print("block_button",block)
         self.save_playlist_button.disabled = block
         self.next_button.disabled = block
         self.prev_button.disabled = block

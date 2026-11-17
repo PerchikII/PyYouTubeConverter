@@ -1,4 +1,4 @@
-from download_tracks import Go_audio_downloanding
+from download_tracks import Go_downloanding
 
 import os
 from datetime import datetime
@@ -7,8 +7,6 @@ import subprocess
 
 from imageio_ffmpeg import get_ffmpeg_exe
 from imageio_ffmpeg import get_ffmpeg_version
-
-from functools import partial
 
 # https://youtu.be/_WLdLUlBGOo
 
@@ -21,10 +19,15 @@ from functools import partial
 
 
 ###############    Exceptions   #################
-from pytubefix.exceptions import VideoUnavailable
+
 from pytubefix.exceptions import RegexMatchError
+from pytubefix.exceptions import HTMLParseError
 from pytubefix.exceptions import AgeRestrictedError
 from pytubefix.exceptions import MaxRetriesExceeded
+from pytubefix.exceptions import VideoUnavailable
+
+
+
 
 from pytubefix import YouTube, Playlist
 
@@ -150,14 +153,15 @@ class Main(BoxLayout):
                                        self.alac, self.m4a, self.avi,
                                        self.mpeg, self.mp4,)
         self.url_index = 0
-        self.gen_all_urls_videos = [None, ]
-        self.one_urls_video = [None, ]
+        self.gen_all_urls_videos = []
+        self.one_urls_video = []
         self.lab_message.add_line(f"        [color=#32CD32]{FFMPEG_LIB_VERSION}[/color]")
         self.lab_message.add_line(f"[color=#32CD32]{30 * ' '}Запуск программы.[/color]")
         self.lab_message.add_line(f"{50 * '*'}")
         self.block_button()
 
     ################################################################################################################
+
     def slider_callback(self, qt):
         if self.MySliderFlag:
             self.process_slider.value += 1
@@ -171,8 +175,11 @@ class Main(BoxLayout):
     ################################################################################################################
     ################################################################################################################
 
-    def thread_create_playlist_YouTube(self, urlvideo, qt):
+    def thread_create_playlist_YouTube(self, urlvideo):
         thr.Thread(target=self.create_object_playlist_youtube, args=(urlvideo,), daemon=True).start()
+        self.MySliderFlag = True
+        Clock.schedule_interval(self.slider_callback, .1)
+
 
     def create_object_youtube(self, url_video):
         """При вставке ссылки на видео в Textinput- получаем
@@ -180,11 +187,7 @@ class Main(BoxLayout):
         if url_video:
             try:
                 self.create_obj_one_video(url_video)
-                self.gen_all_urls_videos[0] = url_video
-                self.block_button(block=False)
-                self.MySliderFlag = False
-                self.positive_slider()
-            except (RegexMatchError, Exception) as er:
+            except (RegexMatchError,HTMLParseError, Exception) as er:
                 self.lab_message.add_line(f' Ошибка:  [color=#FF0000]{er}[/color]')
                 self.lab_message.add_line('             Объект YouTube не создан!')
                 self.lab_message.add_line(f"[color=#FF0000]{50 * '*'}[/color]")
@@ -192,13 +195,15 @@ class Main(BoxLayout):
                 self.lab_message.add_line(f"[color=#32CD32] Создание плейлиста требует времени.[/color]")
                 self.lab_message.add_line(f"[color=#32CD32] {30 * ' '}Ожидайте[/color]")
                 self.lab_message.add_line(f"{50 * '*'}")
-                Clock.schedule_interval(self.slider_callback, .1)
-                Clock.schedule_once(partial(self.thread_create_playlist_YouTube, url_video), .1)
-
+                self.thread_create_playlist_YouTube(url_video)
+            else:
+                self.block_button(block=False)
+                self.MySliderFlag = False
+                self.positive_slider()
         else:
             self.block_button()
             self.OBJ_YouTube = None
-            self.gen_all_urls_videos = [None, ]
+            self.gen_all_urls_videos = []
             self.install_image_carousel_by_default()
             self.process_slider.value_track_color = "green"
             self.process_slider.value = 0
@@ -217,7 +222,6 @@ class Main(BoxLayout):
         first_video = self.gen_all_urls_videos[0]
         self.create_obj_one_video(first_video)
 
-    @mainthread
     def create_object_playlist_youtube(self, url_video):
         try:
             OBJ_YouTube_Playlist = Playlist(url_video, )
@@ -225,35 +229,26 @@ class Main(BoxLayout):
                 self.gen_all_urls_videos = OBJ_YouTube_Playlist.video_urls  # список URL
                 self.message_create_playlist()
         except (KeyError, Exception):
-            self.MySliderFlag = False
-            self.lab_message.add_line(
-                f' Ошибка: [color=#FF0000]{url_video}[/color] Не является ссылкой на PlayList YouTube.')
-            self.lab_message.add_line('         Объект PlayList YouTube не создан!')
-            self.lab_message.add_line(f"[color=#FF0000]{50 * '*'}[/color]")
-            self.block_button()
-            self.negative_slider()
+            self.message_error_create_playlist(url_video)
+
+    @mainthread
+    def message_error_create_playlist(self,url_video):
+        self.MySliderFlag = False
+        self.lab_message.add_line(
+            f' Ошибка: [color=#FF0000]{url_video}[/color] Не является ссылкой на PlayList YouTube.')
+        self.lab_message.add_line('         Объект PlayList YouTube не создан!')
+        self.lab_message.add_line(f"[color=#FF0000]{50 * '*'}[/color]")
+        self.block_button()
+        self.negative_slider()
+
+
+
 
     def create_obj_one_video(self, url_video):
         self.lab_message.add_line(f"[color=#32CD32] Создаю объект YouTube[/color]")
         self.OBJ_YouTube = YouTube(url_video, )
-        self.one_urls_video = [url_video, ]
-        self.install_data_this_video()
-
-    def install_data_this_video(self, ):
-        self.lab_message.add_line(f"[color=#32CD32] Объект YouTube создан.[/color]")
-        self.lab_message.add_line(f"[color=#32CD32] Получаю название.[/color]")
-        self.lab_message.add_line(f"[color=#32CD32] Получаю картинку.[/color]")
-        self.lab_message.add_line(f"{50 * '*'}")
         try:
-            self.youtube_title.text = self.OBJ_YouTube.title[:70]
-            img_thumb = self.OBJ_YouTube.thumbnail_url
-            img = AsyncImage(source=img_thumb, fit_mode="contain")
-            self.carusel.clear_widgets()
-            self.carusel.add_widget(img)
-            self.positive_slider()
-            self.block_button(block=False)
-            self.MySliderFlag = False # Останавливает движение Slider
-
+            self.install_data_this_video()
         except Exception as err:
             self.lab_message.add_line(f"[color=#FF0000] Ошибка получения заголовка[/color]")
             self.lab_message.add_line(f"[color=#FF0000] {err}[/color]")
@@ -265,25 +260,44 @@ class Main(BoxLayout):
             self.block_button(block=False)
             self.negative_slider()
 
+
+    def install_data_this_video(self, ):
+        self.lab_message.add_line(f"[color=#32CD32] Объект YouTube создан.[/color]")
+        self.lab_message.add_line(f"[color=#32CD32] Получаю название.[/color]")
+        self.lab_message.add_line(f"[color=#32CD32] Получаю картинку.[/color]")
+        self.lab_message.add_line(f"{50 * '*'}")
+        self.youtube_title.text = self.OBJ_YouTube.title[:70]
+        img_thumb = self.OBJ_YouTube.thumbnail_url
+        img = AsyncImage(source=img_thumb, fit_mode="contain")
+        self.carusel.clear_widgets()
+        self.carusel.add_widget(img)
+        self.positive_slider()
+        self.block_button(block=False)
+        self.MySliderFlag = False # Останавливает движение Slider
+
+
+
     def previous_video(self):
-        self.url_index -= 1
-        try:
-            url_previous_video = self.gen_all_urls_videos[self.url_index]
-            self.create_obj_one_video(url_previous_video)
-        except IndexError:
-            self.url_index = 0
-            url_previous_video = self.gen_all_urls_videos[self.url_index]
-            self.create_obj_one_video(url_previous_video)
+        if self.gen_all_urls_videos:
+            self.url_index -= 1
+            try:
+                url_previous_video = self.gen_all_urls_videos[self.url_index]
+                self.create_obj_one_video(url_previous_video)
+            except IndexError:
+                self.url_index = 0
+                url_previous_video = self.gen_all_urls_videos[self.url_index]
+                self.create_obj_one_video(url_previous_video)
 
     def next_video(self):
-        self.url_index += 1
-        try:
-            url_next_video = self.gen_all_urls_videos[self.url_index]
-            self.create_obj_one_video(url_next_video)
-        except IndexError:
-            self.url_index = 0
-            url_next_video = self.gen_all_urls_videos[self.url_index]
-            self.create_obj_one_video(url_next_video)
+        if self.gen_all_urls_videos:
+            self.url_index += 1
+            try:
+                url_next_video = self.gen_all_urls_videos[self.url_index]
+                self.create_obj_one_video(url_next_video)
+            except IndexError:
+                self.url_index = 0
+                url_next_video = self.gen_all_urls_videos[self.url_index]
+                self.create_obj_one_video(url_next_video)
 
     ############################################################################################################################
     ############################################################################################################################
@@ -293,20 +307,33 @@ class Main(BoxLayout):
     def start_save_one_track(self):
         """ При нажатии кнопки 'Сохранить ролик' """
         self.MySliderFlag = True
+        self.one_urls_video = [self.OBJ_YouTube, ]
         if self.mp4.active:  # Если нажата радиокнопка скачивания видео
             self.lab_message.add_line(f"[color=#32CD32] Ищу видео.[/color]")
-            self.thread_download_video()
+            thr.Thread(target=self.start_download_one_video, daemon=True).start()
         else:
-            thr.Thread(target=self.start_download_one_track, daemon=True).start()
+            thr.Thread(target=self.start_download_one_sound, daemon=True).start()
 
-    def start_download_one_track(self):
-        Go_audio_downloanding(DIR_DOWNLOAD, self.one_urls_video,
+    def start_download_one_sound(self):
+        Go_downloanding(DIR_DOWNLOAD, self.one_urls_video,
                               self.lab_message,
                               self.tuple_checkbox_buttons,
                               self.buttons_navigation,
                               self.process_slider,
-                              ).start()
+                              ).start(video=False)
 
+    def start_download_one_video(self):
+        Go_downloanding(DIR_DOWNLOAD, self.one_urls_video,
+                              self.lab_message,
+                              self.tuple_checkbox_buttons,
+                              self.buttons_navigation,
+                              self.process_slider,
+                              ).start(video=True)
+##################################################################################################
+##################################################################################################
+##################################################################################################
+##################################################################################################
+    ######################      VIDEO      ##################################
     def thread_download_video(self):
         thr.Thread(target=self.download_video_stream, daemon=True).start()
 
@@ -709,7 +736,7 @@ class Main(BoxLayout):
                               self.tuple_checkbox_buttons,
                               self.buttons_navigation,
                               self.process_slider,
-                              ).start()
+                              ).start(video=False)
 
 
     def thread_save_playlist_button(self):
