@@ -17,7 +17,6 @@ from imageio_ffmpeg import get_ffmpeg_version
 # https://www.youtube.com/playlist?list=PLF2wVlabSmeE
 # https://youtube.com/playlist?list=PLD6SPjEPomathzOFzCSvvMAlthuqRnSa9&si=KY77eGjr3fWRXrZH
 
-
 ###############    Exceptions   #################
 
 from pytubefix.exceptions import RegexMatchError

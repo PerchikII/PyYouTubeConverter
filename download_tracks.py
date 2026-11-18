@@ -33,6 +33,7 @@ class Go_downloanding:
         self.lab_message = box_message
         self.DIR_DOWNLOAD = directory
         self.path_load_audio_file = None
+        self.semaphore = threading.Semaphore(1)
 
     def start(self,video):
         self.block_button()
@@ -43,32 +44,34 @@ class Go_downloanding:
 
     def start_slider(self):
         Clock.schedule_interval(self.slider_callback, .1)
+#######################################################################
+#######################################################################
+#######################################################################
+    def semaphore_download(self, YTube_obj,flag_audio=True):
+        self.MySliderFlag = True
+        Clock.schedule_interval(self.slider_callback, .1)
+        with self.semaphore:
+            if flag_audio:
+                audio_stream = self.get_audio_stream(YTube_obj)
+                self.start_download_audio_file(audio_stream)
+            else:
+                audio_stream = self.get_audio_stream(YTube_obj)
+                self.start_download_audio_file(audio_stream)
+                video_stream = self.get_video_stream(YTube_obj)
+                self.start_download_video_file(video_stream)
+
 
     def download_sound(self):
         for obj in self.list_objects:
-            self.MySliderFlag = True
-            Clock.schedule_interval(self.slider_callback, .1)
-            audio_stream = self.get_audio_stream(obj)
-            threading.Thread(target=self.start_download_audio_file, args=(audio_stream,)).start()
-            sleep(5)
-
-
-
-
+            threading.Thread(target=self.semaphore_download, args=(obj,)).start()
+            sleep(3)
 
     def download_video(self):
         for obj in self.list_objects:
-            self.MySliderFlag = True
-            Clock.schedule_interval(self.slider_callback, .1)
-            audio_stream = self.get_audio_stream(obj)
-            threading.Thread(target=self.start_download_audio_file, args=(audio_stream,)).start()
+            threading.Thread(target=self.semaphore_download, args=(obj,False,)).start()
+            sleep(3)
 
-            sleep(5)
 
-            self.MySliderFlag = True
-            threading.Thread(target=self.start_slider).start()
-            video_stream = self.get_video_stream(obj)
-            threading.Thread(target=self.start_download_video_file, args=(video_stream,)).start()
 
 
 
@@ -367,15 +370,15 @@ class Go_downloanding:
         self.lab_message.add_line(f"[color=#FF0000]{50 * '*'}[/color]")
 
     @mainthread
-    def message_convert_finish(self,file_name):
-        self.lab_message.add_line(f" Конвертация {file_name} завершена")
+    def message_convert_finish(self, format):
+        self.lab_message.add_line(f" Конвертация в {format} завершена")
         # self.lab_message.add_line(f"{30 * ' '}Работа завершена.")
         self.lab_message.add_line(f"{50 * '*'}")
 
     def start_convert(self, path_file, format):
         """-y => разрешить перезапись выходного файла без подтверждения»."""
         new_file = os.path.splitext(path_file)[0] + format
-        file_name = os.path.splitext(new_file)[1]
+        file_name = os.path.split(new_file)[1]
         if format:
             convert_command = [
                 FFMPEG_LIB_EXE,
@@ -389,11 +392,11 @@ class Go_downloanding:
                 self.delete_old_files(path_file)
                 self.MySliderFlag = False
             else:
-                self.message_convert_finish(file_name)
+                self.message_convert_finish(format)
                 self.delete_old_files(path_file)
                 self.MySliderFlag = False
         else:
-            self.message_convert_finish(file_name)
+            self.message_convert_finish(format)
             self.positive_slider()
             self.MySliderFlag = False
         self.block_button(False)
@@ -414,7 +417,10 @@ class Go_downloanding:
             self.lab_message.add_line(f"{50 * '*'}")
 
     def block_button(self, block=True):
-        self.save_playlist_button.disabled = block
+        if self.mp4.active:
+            self.save_playlist_button.disabled = True
+        else:
+            self.save_playlist_button.disabled =block
         self.next_button.disabled = block
         self.prev_button.disabled = block
         self.butt_save_one.disabled = block
