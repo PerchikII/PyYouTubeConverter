@@ -52,6 +52,10 @@ class Go_downloanding:
             threading.Thread(target=self.start_download_audio_file, args=(audio_stream,)).start()
             sleep(5)
 
+
+
+
+
     def download_video(self):
         for obj in self.list_objects:
             self.MySliderFlag = True
@@ -229,7 +233,6 @@ class Go_downloanding:
 
 
     def start_download_audio_file(self, Audio_STREAM):
-
         try:
             self.path_load_audio_file = Audio_STREAM.download(self.DIR_DOWNLOAD, )
             directory, file_name = os.path.split(self.path_load_audio_file)
@@ -255,21 +258,22 @@ class Go_downloanding:
                 return butt.uid
     @ mainthread
     def message_is_convert(self,form,convert=False):
-        self.lab_message.add_line(f"[color=#32CD32] Узнаю надо ли конвертировать в {form}[/color]")
         if convert:
             self.lab_message.add_line(f"[color=#32CD32] Конвертирую в {form}[/color]")
+        else:
+            self.lab_message.add_line(f"[color=#32CD32] Узнаю надо ли конвертировать в {form}[/color]")
 
 
 
     def choice_convert_for_audio(self, uid_check_button, path_file):
+        file_name = os.path.split(path_file)[1]
         match uid_check_button:
-
             case self.mp3.uid:
                 self.message_is_convert("MP3")
                 if self.is_a_file(path_file, ".mp3"):
                     self.text_file_exist(path_file)
                 else:
-                    self.message_is_convert("MP3",True)
+                    self.message_is_convert("MP3",convert=True)
                     self.start_convert(path_file, ".mp3")
 
             case self.wav.uid:
@@ -343,9 +347,9 @@ class Go_downloanding:
 
 
     def is_a_file(self, path_file, format_file):
-        new_file_path = os.path.splitext(path_file)[0] + format_file
+        new_file_name = os.path.splitext(path_file)[0] + format_file # Добавляем расширение к файлу
         directory = os.path.split(path_file)[0]
-        new_file = os.path.split(new_file_path)[1]
+        new_file = os.path.split(new_file_name)[1]
         if new_file in os.listdir(directory):
             return True
 
@@ -356,7 +360,8 @@ class Go_downloanding:
             return True
 
     @mainthread
-    def message_start_convert_error(self,path_file,err):
+    def message_start_convert_error(self,file_name,err):
+        self.lab_message.add_line(f"При конвертации {file_name} произошла ошибка!")
         self.lab_message.add_line(f"[color=#FF0000] Ошибка imageio_ffmpeg. КОД:[/color] {err.returncode}")
         self.lab_message.add_line(f"[color=#FF0000] Ошибка [/color] {err.stderr}")
         self.lab_message.add_line(f"[color=#FF0000]{50 * '*'}[/color]")
@@ -369,8 +374,9 @@ class Go_downloanding:
 
     def start_convert(self, path_file, format):
         """-y => разрешить перезапись выходного файла без подтверждения»."""
+        new_file = os.path.splitext(path_file)[0] + format
+        file_name = os.path.splitext(new_file)[1]
         if format:
-            new_file = os.path.splitext(path_file)[0] + format
             convert_command = [
                 FFMPEG_LIB_EXE,
                 "-y",
@@ -379,15 +385,14 @@ class Go_downloanding:
             try:
                 subprocess.run(convert_command, check=True)
             except subprocess.CalledProcessError as err:
-                self.message_start_convert_error(path_file,err)
+                self.message_start_convert_error(file_name,err)
                 self.delete_old_files(path_file)
                 self.MySliderFlag = False
             else:
-                self.message_convert_finish(new_file)
+                self.message_convert_finish(file_name)
                 self.delete_old_files(path_file)
                 self.MySliderFlag = False
         else:
-            file_name = os.path.splitext(path_file)[1]
             self.message_convert_finish(file_name)
             self.positive_slider()
             self.MySliderFlag = False
