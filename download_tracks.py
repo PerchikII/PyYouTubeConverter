@@ -3,6 +3,22 @@ import subprocess
 from time import sleep
 import threading
 
+# https://youtu.be/_WLdLUlBGOo
+
+# Уил Смит
+# https://www.youtube.com/watch?v=fiBLgEx6svA&list=RDfiBLgEx6svA&start_radio=1
+
+# Playlist 4
+# https://www.youtube.com/playlist?list=PLF2wVlabSmeE
+# 485
+# https://youtube.com/playlist?list=PLD6SPjEPomathzOFzCSvvMAlthuqRnSa9&si=KY77eGjr3fWRXrZH
+
+
+
+
+
+
+
 from kivy.clock import mainthread
 from kivy.clock import Clock
 
@@ -21,7 +37,7 @@ class Go_downloanding:
     def __init__(self, directory, list_objs,
                  box_message, check_buttons:tuple,
                  buttons_navigation,
-                 slider, ):
+                 slider,counter ):
 
         self.MySliderFlag = True
         self.process_slider = slider
@@ -31,45 +47,62 @@ class Go_downloanding:
          self.m4a, self.avi, self.mpeg, self.mp4) = check_buttons
         self.list_objects = list_objs
         self.lab_message = box_message
+        self.counter_obj = counter
+        self.counter = None
         self.DIR_DOWNLOAD = directory
         self.path_load_audio_file = None
-        self.semaphore = threading.Semaphore(1)
-
-    def start(self,video):
-        self.block_button()
-        if video:
-            self.download_video()
-        else:
-            self.download_sound()
+        self.lock = threading.Lock()
 
     def start_slider(self):
         Clock.schedule_interval(self.slider_callback, .1)
-#######################################################################
-#######################################################################
-#######################################################################
-    def semaphore_download(self, YTube_obj,flag_audio=True):
+
+    #######################################################################
+    #######################################################################
+    #######################################################################
+
+    def start(self,video):
+        self.block_button()
+        self.counter_obj.text = str(len(self.list_objects))
+        self.counter = len(self.list_objects)
+        if video:
+            for obj in self.list_objects:
+                t_video = threading.Thread(target=self.with_lock_download, args=(obj,),kwargs={"video":True})
+                t_video.start()
+                t_video.join()
+        else:
+            for obj in self.list_objects:
+                t_audio = threading.Thread(target=self.with_lock_download, args=(obj,),kwargs={"video":False})
+                t_audio.start()
+                t_audio.join()
+
+    #######################################################################
+    #######################################################################
+    #######################################################################
+
+
+    def with_lock_download(self, YTube_obj, video):
         self.MySliderFlag = True
         Clock.schedule_interval(self.slider_callback, .1)
-        with self.semaphore:
-            if flag_audio:
-                audio_stream = self.get_audio_stream(YTube_obj)
-                self.start_download_audio_file(audio_stream)
-            else:
+        with self.lock:
+            if video:
                 audio_stream = self.get_audio_stream(YTube_obj)
                 self.start_download_audio_file(audio_stream)
                 video_stream = self.get_video_stream(YTube_obj)
                 self.start_download_video_file(video_stream)
+            else:
+                audio_stream = self.get_audio_stream(YTube_obj)
+                self.start_download_audio_file(audio_stream)
+            self.counter -= 1
+            self.message_counter()
 
 
-    def download_sound(self):
-        for obj in self.list_objects:
-            threading.Thread(target=self.semaphore_download, args=(obj,)).start()
-            sleep(3)
+    @mainthread
+    def message_counter(self):
+        self.counter_obj.text = str(self.counter)
 
-    def download_video(self):
-        for obj in self.list_objects:
-            threading.Thread(target=self.semaphore_download, args=(obj,False,)).start()
-            sleep(3)
+
+
+
 
 
 
@@ -158,7 +191,7 @@ class Go_downloanding:
     def message_get_video_stream(self,res,err=False):
         self.lab_message.add_line(f"[color=#32CD32] Видео найдено.[/color]")
         self.lab_message.add_line(f"[color=#32CD32] Качество видео[/color] {res}.")
-        self.lab_message.add_line(f"[color=#32CD32] Начинаю кач видео.[/color].")
+        self.lab_message.add_line(f"[color=#32CD32] Получаю видеопоток.[/color].")
 
     def get_video_stream(self,objYT):
         res_s = ["720p", "480p", "360p", "240p", "144p"]  # "1080p"
@@ -231,7 +264,8 @@ class Go_downloanding:
         self.lab_message.add_line(f"[color=#32CD32] Качаю.[/color]")
         self.lab_message.add_line(f"[color=#32CD32] {30 * ' '}Ждём![/color]")
         self.lab_message.add_line(f"[color=#32CD32] Сохраняю в:[/color] {directory}")
-        self.lab_message.add_line(f"[color=#32CD32] Файл[/color] {file_name} [color=#32CD32]успешно скачан.[/color]")
+        self.lab_message.add_line(f"[color=#32CD32] Файл[/color] {file_name} ")
+        self.lab_message.add_line(f"[color=#32CD32]     Успешно скачан.[/color]")
 
 
 
@@ -371,7 +405,7 @@ class Go_downloanding:
 
     @mainthread
     def message_convert_finish(self, format):
-        self.lab_message.add_line(f" Конвертация в {format} завершена")
+        self.lab_message.add_line(f"    Конвертация в {format} завершена")
         # self.lab_message.add_line(f"{30 * ' '}Работа завершена.")
         self.lab_message.add_line(f"{50 * '*'}")
 
@@ -413,7 +447,7 @@ class Go_downloanding:
             self.lab_message.add_line(f"[color=#FF0000] Ошибка удаления временных файлов. [/color]")
             self.lab_message.add_line(f"[color=#FF0000] В доступе отказано! [/color]")
         else:
-            self.lab_message.add_line(f"[color=#32CD32]{25 * ' '} Успешно!. [/color]")
+            self.lab_message.add_line(f"[color=#32CD32]{30 * ' '} Успешно!. [/color]")
             self.lab_message.add_line(f"{50 * '*'}")
 
     def block_button(self, block=True):
@@ -432,7 +466,6 @@ class Go_downloanding:
             if self.process_slider.value >= 100:
                 self.process_slider.value = 0
         else:
-            print("slider_callback stop")
             return False
 
     def positive_slider(self):

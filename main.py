@@ -13,8 +13,9 @@ from imageio_ffmpeg import get_ffmpeg_version
 # Уил Смит
 # https://www.youtube.com/watch?v=fiBLgEx6svA&list=RDfiBLgEx6svA&start_radio=1
 
-# Playlist
+# Playlist 4
 # https://www.youtube.com/playlist?list=PLF2wVlabSmeE
+# 485
 # https://youtube.com/playlist?list=PLD6SPjEPomathzOFzCSvvMAlthuqRnSa9&si=KY77eGjr3fWRXrZH
 
 ###############    Exceptions   #################
@@ -81,7 +82,7 @@ class LabelMessage(Label):
         self.size_hint_x = 1
         self.size_hint_y = None
         self.font_size = sp(16)
-        self.height = self.font_size + sp(2)
+        self.height = self.font_size + sp(10)
         self.halign = "left"
         self.text_size = (Window.width - dp(20), None)
 
@@ -99,7 +100,7 @@ class BoxMessage(BoxLayout):
         Размещает у себя"""
         now = datetime.now()
         time_str = now.strftime("%H:%M:%S")
-        lbl_message = LabelMessage(text=time_str + " " + message)
+        lbl_message = LabelMessage(text=time_str + " " + message, )
         self.add_widget(lbl_message)
 
 
@@ -149,8 +150,8 @@ class Main(BoxLayout):
                                        self.alac, self.m4a, self.avi,
                                        self.mpeg, self.mp4,)
         self.url_index = 0
-        self.gen_all_urls_videos = []
-        self.one_urls_video = []
+        self.list_all_objects_videos = []
+        self.one_obj_list_container = []
         self.list_urs = []
         self.lab_message.add_line(f"        [color=#32CD32]{FFMPEG_LIB_VERSION}[/color]")
         self.lab_message.add_line(f"[color=#32CD32]{30 * ' '}Запуск программы.[/color]")
@@ -183,13 +184,13 @@ class Main(BoxLayout):
         if url_video:
             try:
                 self.create_obj_one_video(url_video)
-            except (RegexMatchError, HTMLParseError,TypeError, Exception) as er:
+            except (RegexMatchError, HTMLParseError, TypeError, Exception) as er:
                 self.lab_message.add_line(f' Ошибка:  [color=#FF0000]{er}[/color]')
                 self.lab_message.add_line('             Объект YouTube не создан!')
                 self.lab_message.add_line(f"[color=#FF0000]{50 * '*'}[/color]")
-                self.lab_message.add_line(f"[color=#32CD32] Создаю объект Playlist YouTube.[/color]")
+                self.lab_message.add_line(f"[color=#32CD32] Создаю объект[/color] Playlist YouTube.")
                 self.lab_message.add_line(f"[color=#32CD32] Создание плейлиста требует времени.[/color]")
-                self.lab_message.add_line(f"[color=#32CD32] {30 * ' '}Ожидайте[/color]")
+                self.lab_message.add_line(f"[color=#32CD32] {30 * ' '}Ожидайте![/color]")
                 self.lab_message.add_line(f"{50 * '*'}")
                 self.thread_create_playlist_YouTube(url_video)
             else:
@@ -199,7 +200,7 @@ class Main(BoxLayout):
         else:
             self.block_button()
             self.OBJ_YouTube = None
-            self.gen_all_urls_videos = []
+            self.list_all_objects_videos = []
             self.install_image_carousel_by_default()
             self.process_slider.value_track_color = "green"
             self.process_slider.value = 0
@@ -207,7 +208,7 @@ class Main(BoxLayout):
 
     @mainthread
     def message_create_playlist(self):
-        count_videos_url = len(self.gen_all_urls_videos)
+        count_videos_url = len(self.list_all_objects_videos)
         self.lab_message.add_line(f"        Объект Playlist YouTube создан.")
         self.lab_message.add_line(f"[color=#32CD32] Список адресов получен.[/color]")
         self.lab_quant_videos.text = str(count_videos_url)
@@ -221,7 +222,7 @@ class Main(BoxLayout):
         try:
             OBJ_YouTube_Playlist = Playlist(url_video, )
             if OBJ_YouTube_Playlist:
-                self.gen_all_urls_videos = OBJ_YouTube_Playlist.videos  # список OBJ
+                self.list_all_objects_videos = OBJ_YouTube_Playlist.videos  # список OBJ
                 self.list_urs = OBJ_YouTube_Playlist.video_urls  # список URLs
                 self.message_create_playlist()
         except (KeyError, Exception):
@@ -302,12 +303,13 @@ class Main(BoxLayout):
         """ При нажатии на кнопку 'Сохранить плейлист' """
         self.message_playlist()
         Go_downloanding(DIR_DOWNLOAD,
-                              self.gen_all_urls_videos,
-                              self.lab_message,
-                              self.tuple_checkbox_buttons,
-                              self.buttons_navigation,
-                              self.process_slider,
-                              ).start(video=False)
+                        self.list_all_objects_videos,
+                        self.lab_message,
+                        self.tuple_checkbox_buttons,
+                        self.buttons_navigation,
+                        self.process_slider,
+                        self.lab_quant_videos,
+                        ).start(video=False)
 
     ############################################################################################################################
     ############################################################################################################################
@@ -317,27 +319,32 @@ class Main(BoxLayout):
     def start_save_one_track(self):
         """ При нажатии кнопки 'Сохранить ролик' """
         self.MySliderFlag = True
-        self.one_urls_video = [self.OBJ_YouTube, ]
+        self.one_obj_list_container = [self.OBJ_YouTube, ]
         if self.mp4.active:  # Если нажата радиокнопка скачивания видео
             self.lab_message.add_line(f"[color=#32CD32] Ищу видео.[/color]")
-            thr.Thread(target=self.start_download_one_video, daemon=True).start()
+            self.start_download_one_video()
+            # thr.Thread(target=self.start_download_one_video, daemon=True).start()
         else:
-            thr.Thread(target=self.start_download_one_sound, daemon=True).start()
+           self.start_download_one_sound()
+            # thr.Thread(target=self.start_download_one_sound, daemon=True).start()
 
     def start_download_one_sound(self):
-        Go_downloanding(DIR_DOWNLOAD, self.one_urls_video,
+        Go_downloanding(DIR_DOWNLOAD,
+                        self.one_obj_list_container,
                         self.lab_message,
                         self.tuple_checkbox_buttons,
                         self.buttons_navigation,
                         self.process_slider,
+                        self.lab_quant_videos,
                         ).start(video=False)
 
     def start_download_one_video(self):
-        Go_downloanding(DIR_DOWNLOAD, self.one_urls_video,
+        Go_downloanding(DIR_DOWNLOAD, self.one_obj_list_container,
                         self.lab_message,
                         self.tuple_checkbox_buttons,
                         self.buttons_navigation,
                         self.process_slider,
+                        self.lab_quant_videos,
                         ).start(video=True)
 
     ##################################################################################################
@@ -361,8 +368,6 @@ class Main(BoxLayout):
                     fit_mode="fill")
         self.carusel.clear_widgets()
         self.carusel.add_widget(img)
-
-
 
     def turnoff_radiobutton(self, act):
         if act:
@@ -389,7 +394,6 @@ class Main(BoxLayout):
     #########################################################################################################
     #########################################################################################################
     #########################################################################################################
-
 
     def thread_save_playlist_button(self):
         thr.Thread(target=self.start_save_playlist, daemon=True).start()
